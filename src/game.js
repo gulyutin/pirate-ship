@@ -19,6 +19,8 @@ import { BOSSES, kraken } from './bosses.js';
 import { RECRUITS, renderTavern, createRoles } from './tavern.js';
 import { HULLS, owns, renderYard } from './looks.js';
 import { createPet } from './pets.js';
+import { createAnimals, renderAlbum, STICKERS } from './animals.js';
+import { createDive, makeHelmet, SEABED } from './dive.js';
 import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
@@ -103,11 +105,15 @@ for (const id of save.hired) {
 const world = createWorld(scene, terrain);
 const battle = createBattle(scene);
 const fx = createFx(scene);
-const ocean = createOcean(scene, fx, sfx, { say: (msg) => say(msg) });
+const ocean = createOcean(scene, fx, sfx, { say: (msg) => say(msg), sticker: (id) => addSticker(id) });
 const nature = createNature(scene);
 const minimap = createMinimap($('minimap'));
 const controls = createControls(stage, { onAction: doAction, onJump: doJump, onBoard: goAboard });
-const WONDERS = terrain.islands.filter((isl) => !isl.port);
+const WONDERS = terrain.islands.filter((isl) => !isl.port && !isl.secret);
+const SECRET_ISLES = terrain.islands.filter((isl) => isl.secret);
+// На картах — всё, кроме секретных островов, о которых ещё не узнал.
+const mapIslands = () => terrain.islands.filter((i) => !i.secret || save.secretsKnown.includes(i.id));
+const mapFound = () => save.found.concat(save.secretsFound);
 
 
 /* ---------- сохранение и состояние ---------- */
@@ -222,7 +228,11 @@ const story = createStory(save, {
   celebrate: (x, y, z) => celebrate(x, y, z),
   store: () => storeSave(save),
   cellPos: terrain.cellPos,
-  onKey: () => updateHud(),
+  onKey: (k) => {
+    updateHud();
+    if (k === 1) addSticker('firebird');
+    if (k === 4) addSticker('serpent');
+  },
   world,
   battle,
   groundAt: terrain.groundAt,
@@ -236,6 +246,7 @@ const story = createStory(save, {
     for (let i = 0; i < 4; i++) setTimeout(() => celebrate(p.x + (Math.random() - 0.5) * 20, 4, p.z + (Math.random() - 0.5) * 20), i * 400);
     sfx.medal();
     ship.setTrophy(true);
+    addSticker('kraken');
     say('🏆 Золотой Кракен побеждён! Его клад твой: +200. Ты — легенда морей!', 6);
   },
 });
@@ -273,6 +284,117 @@ const pet = createPet(crew, {
   treasureNear: (r) =>
     world.items.find((i) => (i.kind === 'xspot' || i.kind === 'bigx') && !i.dead && dist(i.g.position.x, i.g.position.z, cap.x, cap.z) < r) ?? null,
 });
+
+const animals = createAnimals(scene, terrain, {
+  has: (id) => save.stickers.includes(id),
+  add: (id) => addSticker(id),
+});
+
+// Затонувшие корабли и ныряние к ним.
+const deep = createDive(scene, {
+  fx,
+  sfx,
+  say,
+  islands: terrain.islands,
+  gold: (n) => addGold(n),
+  sticker: (id) => addSticker(id),
+  looted: (id) => save.wrecksLooted.includes(id),
+  markLooted: (id) => {
+    save.wrecksLooted.push(id);
+    storeSave(save);
+  },
+});
+const helmet = makeHelmet();
+let hatWasVisible = true;
+
+function startDive() {
+  const site = deep.nearSite(boat.x, boat.z, 18);
+  if (!site) return;
+  balbes.cancel();
+  fishing.stop();
+  mode = 'dive';
+  boat.speed = 0;
+  deep.start(site);
+  const p = deep.entry();
+  Object.assign(cap, { x: p.x, z: p.z, y: p.y, vy: 0, air: false, facing: boat.heading, stride: 0 });
+  crew.captain.removeFromParent();
+  scene.add(crew.captain);
+  crew.captain.rotation.order = 'YXZ';
+  hatWasVisible = crew.captain.userData.hat.visible;
+  crew.captain.userData.hat.visible = false;
+  crew.captain.add(helmet);
+  water.setUnderwater(true);
+  sfx.splash();
+  fx.splash(boat.x, boat.z);
+  say('🤿 Ныряем! Собирай жемчуг, ищи сундук и морских жителей. Воздуха — на 45 секунд', 4);
+}
+
+function endDive(msg) {
+  deep.end();
+  water.setUnderwater(false);
+  helmet.removeFromParent();
+  crew.captain.userData.hat.visible = hatWasVisible;
+  mode = 'sea';
+  crew.captain.removeFromParent();
+  ship.group.add(crew.captain);
+  crew.captain.position.copy(crew.captainSpot);
+  crew.captain.rotation.set(0, 0, 0);
+  walkPose(crew.captain, 0, 0);
+  fx.splash(boat.x, boat.z);
+  sfx.splash();
+  say(msg ?? 'Всплыли! 🫧');
+}
+
+// Под водой: плывёшь куда ведёшь, кнопка прыжка — гребок вверх, потом плавно опускаешься.
+function updateDive(dt, mv) {
+  const m = Math.hypot(mv.x, mv.y);
+  if (m > 0) {
+    const [dx, dz] = stickToWorld(mv);
+    cap.facing = turnToward(cap.facing, Math.atan2(-dx, -dz), dt * 8);
+    cap.x += dx * 7 * dt;
+    cap.z += dz * 7 * dt;
+    if (!deep.nearSite(cap.x, cap.z, 60)) {
+      cap.x -= dx * 7 * dt; // дальше — открытая глубина, не уплываем
+      cap.z -= dz * 7 * dt;
+    }
+  }
+  setAction('surface');
+  cap.vy -= 5 * dt;
+  cap.y += cap.vy * dt;
+  if (cap.y < SEABED + 1.2) {
+    cap.y = SEABED + 1.2;
+    cap.vy = 0;
+  }
+  if (cap.y > SEABED + 14) {
+    cap.y = SEABED + 14;
+    cap.vy = Math.min(cap.vy, 0);
+  }
+  cap.phase += dt * 6;
+  walkPose(crew.captain, cap.phase, 0.6);
+  crew.captain.position.set(cap.x, cap.y, cap.z);
+  crew.captain.rotation.y = cap.facing;
+  crew.captain.rotation.x = m > 0 ? -0.9 : -0.2; // плывёт, вытянувшись вперёд
+  if (deep.update(dt, t, cap) === 'air') endDive('Воздух кончился — всплываем! 🫧');
+}
+
+// Новая наклейка в альбом: звери на островах, дельфины и кит, чудища из легенды.
+function addSticker(id) {
+  if (save.stickers.includes(id)) return;
+  const st = STICKERS.find((s) => s.id === id);
+  if (!st) return;
+  save.stickers.push(id);
+  storeSave(save);
+  addGold(3);
+  sfx.medal();
+  say(`📒 Новая наклейка: ${st.icon} ${st.name}! (${save.stickers.length} из ${STICKERS.length}) +3`, 3);
+}
+
+function openAlbum() {
+  unlockAudio();
+  $('albumCount').textContent = `Наклеек: ${save.stickers.length} из ${STICKERS.length}. Подойди к зверю поближе — и он в альбоме!`;
+  renderAlbum($('stickers'), save);
+  $('scAlbum').classList.remove('hidden');
+}
 
 // Внешний вид с верфи: корабль, паруса, фигура, шляпа, питомец.
 let hullScale = 1;
@@ -484,6 +606,10 @@ function showHint(text) {
 }
 
 function discover(isl) {
+  if (isl.secret) {
+    findSecret(isl);
+    return;
+  }
   if (isl.port || save.found.includes(isl.id)) return;
   save.found.push(isl.id);
   storeSave(save);
@@ -640,8 +766,37 @@ function openLegend() {
   $('scLegend').classList.remove('hidden');
 }
 
-// Бутылка с запиской: клочок карты сокровищ или карта удачи в подарок.
+// Секретный остров: сначала узнаёшь (записка в бутылке или подплыл), потом высаживаешься — клад +50.
+function revealSecret(isl) {
+  if (save.secretsKnown.includes(isl.id)) return;
+  save.secretsKnown.push(isl.id);
+  storeSave(save);
+  sfx.discover();
+  say(`✦ Секретный остров «${isl.name}»!`, 3);
+}
+
+function findSecret(isl) {
+  revealSecret(isl);
+  if (save.secretsFound.includes(isl.id)) return;
+  save.secretsFound.push(isl.id);
+  storeSave(save);
+  addGold(50);
+  celebrate(cap.x, cap.y, cap.z);
+  sfx.chest();
+  say(`✦ Ты нашёл секретный остров «${isl.name}»! Клад: +50`, 4);
+}
+
+// Бутылка с запиской: секретный остров, клочок карты сокровищ или карта удачи в подарок.
 function bottleFound() {
+  const hidden = SECRET_ISLES.filter((i) => !save.secretsKnown.includes(i.id));
+  if (hidden.length && Math.random() < 0.45) {
+    const isl = hidden[Math.floor(Math.random() * hidden.length)];
+    save.secretsKnown.push(isl.id);
+    storeSave(save);
+    sfx.discover();
+    say(`🍾 В записке карта секретного острова «${isl.name}»! Ищи ✦ на карте`, 4);
+    return;
+  }
   if (save.bigTreasure == null && Math.random() < 0.5) addMapPiece();
   else openCards('gift');
 }
@@ -708,6 +863,10 @@ function goAshore() {
 // Вернуться на корабль можно откуда угодно: рядом — сам запрыгивает,
 // далеко — свисток, и матросы забирают капитана на шлюпке.
 function goAboard() {
+  if (mode === 'dive') {
+    endDive();
+    return;
+  }
   if (mode !== 'land') return;
   if (dist(cap.x, cap.z, boat.x, boat.z) > BOARD_R) {
     fx.burst(0xffffff, crew.captain.position, 12, { speed: 6, up: 4, y: 2 });
@@ -781,7 +940,7 @@ function questDone(q) {
   save.medals++;
   addGold(q.reward);
   sfx.medal();
-  const onLand = mode === 'land';
+  const onLand = mode === 'land' || mode === 'dive';
   celebrate(onLand ? cap.x : boat.x, onLand ? cap.y : 4, onLand ? cap.z : boat.z);
   say(`Задание выполнено: ${q.text}! +${q.reward}`, 3);
 }
@@ -1087,6 +1246,7 @@ function updateSea(dt, mv) {
   for (const isl of WONDERS) {
     if (dist(isl.x, isl.z, boat.x, boat.z) < isl.r + 45) discover(isl);
   }
+  for (const isl of SECRET_ISLES) if (dist(isl.x, isl.z, boat.x, boat.z) < isl.r + 45) revealSecret(isl);
 
   world.spawnEnemies(dt, boat.x, boat.z, save.found.length);
   if (world.spawnBarrels(dt, boat.x, boat.z, boat.heading)) say('Человек за бортом! Плыви к бочке!');
@@ -1115,6 +1275,7 @@ function updateSea(dt, mv) {
   const spot = Math.abs(boat.speed) < 8 ? terrain.nearestLand(boat.x, boat.z, ASHORE_R, true) : null;
   if (fishing.active && (m > 0 || spot)) fishing.stop(); // поплыли — удочку сматываем
   if (spot) setAction('ashore');
+  else if (!fishing.active && Math.abs(boat.speed) < 5 && deep.nearSite(boat.x, boat.z, 18)) setAction('dive');
   else if (fishing.active) setAction('pull');
   else {
     const still = Math.abs(boat.speed) < 1.5 && dist(boat.x, boat.z, DOCK.x, DOCK.z) > DOCK_RELEASE;
@@ -1159,6 +1320,9 @@ function doJump() {
     cap.air = true;
     cap.vy = JUMP_V * (1 + 0.3 * Math.min(2, cards.count('boots')));
     sfx.jump();
+  } else if (mode === 'dive') {
+    cap.vy = 6; // гребок вверх
+    sfx.splash();
   } else if (mode === 'sea' && seaHop <= 0 && !balbes.acting(crew.people[0])) {
     seaHop = 0.5;
     sfx.jump();
@@ -1375,7 +1539,7 @@ function updateCamera(dt) {
   let height = 29;
   let ahead = 22;
   let lookY = 7;
-  if (mode === 'land') {
+  if (mode === 'land' || mode === 'dive') {
     fx0 = cap.x;
     fz0 = cap.z;
     fy0 = cap.y;
@@ -1457,7 +1621,7 @@ function updateSpy(dt, fxX, fxZ) {
       best = { isl, d };
     }
   }
-  const known = best && (best.isl.port || best.isl.home || save.found.includes(best.isl.id));
+  const known = best && (best.isl.port || best.isl.home || save.found.includes(best.isl.id) || save.secretsKnown.includes(best.isl.id));
   const name = !best ? 'Только море…' : known ? best.isl.name : 'Неизвестный остров';
   $('spyLabel').textContent = best ? `${name} · ${Math.round(best.d)} м` : name;
   if (name !== spyName) {
@@ -1466,14 +1630,14 @@ function updateSpy(dt, fxX, fxZ) {
 }
 
 function drawMap() {
-  const onLand = mode === 'land';
+  const onLand = mode === 'land' || mode === 'dive';
   minimap.draw({
     x: onLand ? cap.x : boat.x,
     z: onLand ? cap.z : boat.z,
     yaw: camYaw,
     heading: onLand ? cap.facing : boat.heading,
-    islands: terrain.islands,
-    found: save.found,
+    islands: mapIslands(),
+    found: mapFound(),
     enemies: world.items.filter((it) => it.kind === 'enemy' && !it.dead && !it.sinking),
     ship: onLand ? boat : null,
     marks: mapMarks(),
@@ -1490,7 +1654,11 @@ function mapMarks() {
   if (big) marks.push({ x: big.x, z: big.z, glyph: '✕', color: '#c0392b' });
   const qt = quests.target();
   if (qt != null) marks.push({ x: terrain.islands[qt].x, z: terrain.islands[qt].z, glyph: '!', color: '#d4a020' });
-  marks.push(...events.marks(), ...story.marks());
+  const mf = mode === 'land' || mode === 'dive' ? cap : boat;
+  marks.push(...events.marks(), ...story.marks(), ...deep.marks(mf.x, mf.z));
+  for (const isl of SECRET_ISLES) {
+    if (save.secretsKnown.includes(isl.id) && !save.secretsFound.includes(isl.id)) marks.push({ x: isl.x, z: isl.z, glyph: '✦', color: '#8a4fc0' });
+  }
   return marks;
 }
 
@@ -1515,6 +1683,8 @@ const ACTIONS = {
   dig: ['⛏ Копать', startDig],
   fish: ['🎣 Рыбачить', () => fishing.start()],
   pull: ['🎣 Тянуть!', () => fishing.pull()],
+  dive: ['🤿 Нырнуть', () => startDive()],
+  surface: ['🫧 Всплыть', () => endDive()],
 };
 
 // Когда кнопка появляется впервые, голос объясняет, что нажать.
@@ -1538,7 +1708,7 @@ function setAction(name) {
 
 // кнопки суши: прыжок и «На корабль» видны всё время, пока капитан на острове
 function syncLandUi() {
-  const on = mode === 'land';
+  const on = mode === 'land' || mode === 'dive';
   if (on === landUi) return;
   landUi = on;
   jumpBtn.classList.toggle('hidden', !on);
@@ -1653,13 +1823,14 @@ function renderPause() {
   $('pauseMute').textContent = save.muted ? '🔇 Звук выключен' : '🔊 Звук включён';
   $('gfxBtn').textContent = save.gfx === 'fast' ? '⚡ Графика: быстрая' : '✨ Графика: красивая';
   drawWorldMap($('worldMap'), {
-    islands: terrain.islands,
-    found: save.found,
+    islands: mapIslands(),
+    found: mapFound(),
     summits: save.summits,
     boat,
     bigTreasure: save.bigTreasure,
     questTarget: quests.target(),
     storyTarget: story.target(),
+    secrets: SECRET_ISLES.filter((i) => save.secretsKnown.includes(i.id) && !save.secretsFound.includes(i.id)),
   });
   renderQuests($('pauseQuests'));
   $('passBtn').textContent = `📘 Паспорт: ${save.found.length} из ${WONDERS.length}`;
@@ -1721,6 +1892,9 @@ $('cardsSkip').addEventListener('click', closeCards);
 $('legendBtn').addEventListener('click', openLegend);
 $('tavernBtn').addEventListener('click', openTavern);
 $('yardBtn').addEventListener('click', openYard);
+$('albumBtn').addEventListener('click', openAlbum);
+$('albumBtn2').addEventListener('click', openAlbum);
+$('albumClose').addEventListener('click', () => $('scAlbum').classList.add('hidden'));
 $('yardClose').addEventListener('click', () => $('scYard').classList.add('hidden'));
 $('tavernClose').addEventListener('click', () => $('scTavern').classList.add('hidden'));
 $('legendGo').addEventListener('click', () => {
@@ -1799,7 +1973,7 @@ window.addEventListener('resize', resize);
 
 /* ---------- цикл ---------- */
 let last = performance.now();
-const MUSIC_FOR = { port: 'port', sea: 'sea', land: 'land' };
+const MUSIC_FOR = { port: 'port', sea: 'sea', land: 'land', dive: 'night' };
 let battleMusic = false;
 // Мелодия по месту; рядом враги — боевая, вокруг призрак — ночная.
 function musicNow() {
@@ -1827,6 +2001,7 @@ function frame(now) {
   const mv = controls.move();
   if (mode === 'sea') updateSea(dt, mv);
   else if (mode === 'land') updateLand(dt, mv);
+  else if (mode === 'dive') updateDive(dt, mv);
   else if (mode === 'port') updatePort(dt);
   else updateWreck(dt);
   syncLandUi();
@@ -1846,7 +2021,7 @@ function frame(now) {
     ship.group.rotation.z += Math.sin(t * 0.9) * 0.05 * (sky.waves - 1);
   }
 
-  const onLand = mode === 'land';
+  const onLand = mode === 'land' || mode === 'dive';
   const focusX = onLand ? cap.x : boat.x;
   const focusZ = onLand ? cap.z : boat.z;
   water.update(t, focusX - Math.sin(camYaw) * 40, focusZ - Math.cos(camYaw) * 40, sky.waves);
@@ -1872,6 +2047,7 @@ function frame(now) {
   gunner.update(dt, t);
   roles.update(dt, t);
   pet.update(dt, t);
+  animals.update(dt, t, { mode, cap, fx: focusX, fz: focusZ });
   updateActors(dt, focusX, focusZ);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
@@ -1880,7 +2056,8 @@ function frame(now) {
   nature.update(dt, t, { x: cap.x, y: cap.y, z: cap.z, active: mode === 'land', groundAt: terrain.groundAt, night: sky.night });
   events.update(dt, t, { x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode });
   story.update(dt, t, { mode, boat, cap });
-  showTrial(story.hud({ mode }));
+  showTrial(mode === 'dive' ? deep.hud() : story.hud({ mode }));
+  deep.updateSurface(dt, t, focusX, focusZ);
   fx.update(dt);
 
   // набрали золота в трюм — новая карта удачи
@@ -1903,7 +2080,7 @@ function frame(now) {
   }
 
   // на суше всё, что между камерой и капитаном, становится прозрачным
-  voxCutOn.value = mode === 'land' && !spy ? 1 : 0;
+  voxCutOn.value = (mode === 'land' || mode === 'dive') && !spy ? 1 : 0;
   voxCutAt.value.set(cap.x, cap.y + 3.2, cap.z);
 
   renderer.render(scene, camera);
@@ -1924,7 +2101,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, pet, sky, story, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, pet, animals, deep, sky, story, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)

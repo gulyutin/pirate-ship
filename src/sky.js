@@ -376,6 +376,23 @@ export function createSky(scene, renderer, camera, hooks) {
       if (active) hooks.say('Доброе утро! ☀️', 2);
     }
 
+    // под водой: бирюзовая глубина, неба не видно
+    const under = s.mode === 'dive';
+    dome.visible = stars.visible = !under;
+    for (const c of clouds) c.visible = !under;
+    if (under) {
+      horizon.set(0x1c6a86);
+      scene.fog.color.copy(horizon);
+      scene.fog.near = 6;
+      scene.fog.far = 70;
+      renderer.setClearColor(horizon);
+      voxSky.value.copy(horizon);
+      sunCube.visible = moon.visible = false;
+      rain.count = 0;
+      hooks.rain(0);
+      hemi.color.set(0x8ad0e8);
+    }
+
     place(s.fx, s.fz);
   }
 

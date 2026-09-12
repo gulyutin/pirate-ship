@@ -24,7 +24,7 @@ export function createQuests(save, hooks) {
   function visitTarget() {
     const taken = new Set(save.quests.map((q) => q.target));
     const open = hooks.islands
-      .filter((i) => i.landmark && !save.found.includes(i.id) && !taken.has(i.id))
+      .filter((i) => i.landmark && !i.secret && !save.found.includes(i.id) && !taken.has(i.id))
       .sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))
       .slice(0, 3);
     return open.length ? pick(open) : null;

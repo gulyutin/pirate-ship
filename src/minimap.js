@@ -59,6 +59,14 @@ export function drawWorldMap(canvas, v) {
     ctx.font = 'bold 12px system-ui, sans-serif';
     ctx.fillText('★', mx, my + 1);
   }
+  for (const s of v.secrets ?? []) {
+    const [mx, my] = to(s.x, s.z);
+    ctx.fillStyle = '#8a4fc0';
+    ctx.fillRect(mx - 7, my - 7, 14, 14);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillText('✦', mx, my + 1);
+  }
   const [sx, sy] = to(v.boat.x, v.boat.z);
   ctx.save();
   ctx.translate(sx, sy);

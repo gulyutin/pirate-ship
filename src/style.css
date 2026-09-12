@@ -824,6 +824,62 @@ h3 {
   z-index: 6;
 }
 
+/* ---------- альбом наклеек ---------- */
+#scAlbum {
+  z-index: 6;
+}
+
+.album {
+  width: min(560px, 100%) !important;
+}
+
+.stickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.sticker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 86px;
+  padding: 6px 4px;
+  font: 800 22px system-ui, sans-serif;
+  color: #9aa0a4;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.18);
+  border: 3px dashed #6a6f74;
+}
+
+.sticker.got {
+  color: #3a2a18;
+  background: #f4ecd8;
+  border: 3px solid #e8b830;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  transform: rotate(-2deg);
+}
+
+.sticker.got:nth-child(even) {
+  transform: rotate(2deg);
+}
+
+.st-icon {
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.st-name {
+  font: 800 12px system-ui, sans-serif;
+}
+
+.st-hint {
+  font: 600 10.5px/1.2 system-ui, sans-serif;
+  color: #c9cdd0;
+}
+
 /* ---------- верфь ---------- */
 .head-btns {
   flex-wrap: wrap;

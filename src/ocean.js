@@ -58,7 +58,7 @@ function makeGull() {
   return g;
 }
 
-// hooks: say(msg)
+// hooks: say(msg), sticker(id)
 export function createOcean(scene, fx, sfx, hooks) {
   const dolphins = [0, 1, 2].map((i) => {
     const g = makeDolphin();
@@ -132,6 +132,7 @@ export function createOcean(scene, fx, sfx, hooks) {
         whale.g.visible = true;
         sfx.whale();
         hooks.say('Смотри, кит пускает фонтан!');
+        hooks.sticker?.('whale');
         return;
       }
       return;
@@ -189,7 +190,9 @@ export function createOcean(scene, fx, sfx, hooks) {
 
   // c: { x, z, heading, speed, mode, fx, fz, groundAt }
   function update(dt, t, c) {
+    const before = podT;
     podT = c.mode === 'sea' && c.speed > 10 ? podT + dt : 0;
+    if (before < 1.5 && podT >= 1.5) hooks.sticker?.('dolphin');
     if (podT > 1.5 && !toldDolphins) {
       toldDolphins = true;
       hooks.say('Смотри, дельфины плывут рядом!');

@@ -47,7 +47,7 @@ export function createStory(save, hooks) {
       let best = null;
       let bestD = Infinity;
       for (const isl of hooks.islands) {
-        if (isl.port || isl.home || !isl.landmark || used.has(isl.id)) continue;
+        if (isl.port || isl.home || !isl.landmark || isl.secret || used.has(isl.id)) continue;
         const d = Math.abs(Math.hypot(isl.x, isl.z) - ch.dist) + (isl.landmark.region === ch.region ? 0 : 400);
         if (d < bestD) {
           bestD = d;

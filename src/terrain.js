@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { voxelize, TEX, glow } from './voxel.js';
 import { LANDMARKS } from './landmarks/index.js';
+import { SECRETS } from './landmarks/secret.js';
 
 // Суша: острова из блоков с чудесами света, причал и постройки порта.
 // Зерно фиксированное — мир одинаковый при каждом запуске, как карта в Minecraft.
@@ -187,7 +188,7 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     const plateau = landmark ? landmark.size + 3 : 0;
     const island = {
       id: islands.length, name: landmark?.name ?? name, country: landmark?.country ?? '',
-      x: cx, z: cz, r, port, landmark, cells: [], blocks: [],
+      x: cx, z: cz, r, port, landmark, cells: [], blocks: [], secret: !!landmark?.secret,
     };
     islands.push(island);
     sink = island.blocks;
@@ -368,6 +369,25 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     placed.push({ x, z, r });
     makeIsland(x, z, r, { landmark });
   });
+
+  // секретные острова — за последним кругом, там, где просторнее всего
+  for (const landmark of SECRETS) {
+    const r = landmark.size + 12;
+    let best = null;
+    let bestGap = -Infinity;
+    for (let k = 0; k < 72; k++) {
+      const ang = (k / 72) * Math.PI * 2;
+      const x = Math.cos(ang) * 1050;
+      const z = Math.sin(ang) * 1050;
+      const gap = Math.min(...placed.map((p) => Math.hypot(p.x - x, p.z - z) - p.r - r));
+      if (gap > bestGap) {
+        bestGap = gap;
+        best = { x, z };
+      }
+    }
+    placed.push({ x: best.x, z: best.z, r });
+    makeIsland(best.x, best.z, r, { landmark });
+  }
 
   // монеты и крестики — только там, где можно стоять
   for (const isl of islands) isl.cells = isl.cells.filter((c) => !solid.has(key(c.i, c.k)));

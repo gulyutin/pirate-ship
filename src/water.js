@@ -85,5 +85,8 @@ export function createWater(scene, groundAt) {
     deep.position.z = cz;
   }
 
-  return { update };
+  // под водой глубинная плита не нужна — сквозь неё не видно поверхности
+  const setUnderwater = (on) => (deep.visible = !on);
+
+  return { update, setUnderwater };
 }
