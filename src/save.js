@@ -21,7 +21,7 @@ const fresh = () => ({
   fish: 0,
   rescued: 0,
   krakens: 0,
-  look: { sail: 'purple', flag: 'black', figure: 'none', hat: 'tricorn', pet: 'parrot' }, // внешний вид
+  look: { sail: 'purple', flag: 'black', figure: 'none', hat: 'tricorn', pet: 'parrot', hull: 'sloop' }, // внешний вид
   owned: ['sail:purple', 'flag:black', 'figure:none', 'hat:tricorn', 'pet:parrot', 'pet:none'],
   base: [], // блоки своего острова: [i, k, низ, тип]
   story: { keys: 0, kraken: false, legend: false, islands: [] }, // «Легенда о Кракене»

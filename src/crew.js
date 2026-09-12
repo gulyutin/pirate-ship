@@ -224,6 +224,36 @@ function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false,
   return g;
 }
 
+// Шляпы капитана с верфи.
+const CAPTAIN_HATS = {
+  tricorn: () => pirateHat(),
+  bandana: () => bandana(),
+  bicorne: () => roleHat('navigator'),
+  feather: () => {
+    const h = new THREE.Group();
+    cube(h, 0x6a3fa0, 2.3, 0.3, 2.0, 0, 3.8, 0);
+    cube(h, 0x6a3fa0, 1.3, 0.7, 1.2, 0, 4.25, 0);
+    cube(h, 0xf6c944, 1.34, 0.2, 1.24, 0, 4.0, 0);
+    cube(h, 0xe0302a, 0.18, 1.4, 0.18, 0.55, 4.8, 0.35).rotation.z = -0.5;
+    return h;
+  },
+  top: () => {
+    const h = new THREE.Group();
+    cube(h, 0x1a1a1a, 1.9, 0.2, 1.8, 0, 3.75, 0);
+    cube(h, 0x1a1a1a, 1.2, 1.4, 1.1, 0, 4.5, 0);
+    cube(h, 0xc0392b, 1.24, 0.25, 1.14, 0, 4.0, 0);
+    return h;
+  },
+  crown: () => {
+    const h = new THREE.Group();
+    cube(h, 0xf6c944, 1.3, 0.4, 1.2, 0, 3.85, 0);
+    for (const [x, z] of [[-0.5, -0.45], [0.5, -0.45], [-0.5, 0.45], [0.5, 0.45], [0, -0.5], [0, 0.5]]) cube(h, 0xf6c944, 0.24, 0.4, 0.24, x, 4.25, z);
+    cube(h, 0xe0302a, 0.24, 0.24, 0.1, 0, 3.9, -0.62);
+    for (const sx of [-1, 1]) cube(h, 0x3a6fc0, 0.18, 0.18, 0.1, sx * 0.4, 3.9, -0.62);
+    return h;
+  },
+};
+
 // Таблички матросов лесенкой: чем дальше к носу, тем выше — не наезжают друг на друга.
 const labelY = (i) => 6.6 + i * 0.6;
 
@@ -312,6 +342,16 @@ export function createCrew(shipGroup) {
 
   const people = [captainP, ...sailors];
 
+  // Шляпа капитана с верфи (балбес прячет её под шапкой с пропеллером — это сохраняется).
+  function setCaptainHat(id) {
+    const old = captain.userData.hat;
+    const hat = (CAPTAIN_HATS[id] ?? CAPTAIN_HATS.tricorn)();
+    hat.visible = old.visible;
+    captain.remove(old);
+    captain.add(hat);
+    captain.userData.hat = hat;
+  }
+
   // Новый матрос из таверны — встаёт на свободное место на палубе.
   function addSailor(name, role) {
     const i = sailors.length;
@@ -331,6 +371,7 @@ export function createCrew(shipGroup) {
     captainSpot,
     people,
     addSailor,
+    setCaptainHat,
     sailors,
     reset,
     hit,

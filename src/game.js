@@ -17,6 +17,8 @@ import { createGunner } from './gunner.js';
 import { createStory, LEGEND } from './story.js';
 import { BOSSES, kraken } from './bosses.js';
 import { RECRUITS, renderTavern, createRoles } from './tavern.js';
+import { HULLS, owns, renderYard } from './looks.js';
+import { createPet } from './pets.js';
 import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
@@ -258,7 +260,71 @@ const roles = createRoles(scene, crew, {
 
 // Прочность корпуса за заплыв: улучшение «Корпус» и плотник из таверны.
 function maxShields() {
-  return effect.shields[save.up.hull] + (save.hired.includes('carpenter') ? 1 : 0);
+  return effect.shields[save.up.hull] + (save.hired.includes('carpenter') ? 1 : 0) + (HULLS[save.look.hull]?.tier ?? 0);
+}
+
+const pet = createPet(crew, {
+  say,
+  fx,
+  sfx,
+  mode: () => mode,
+  gold: (n) => addGold(n),
+  enemyNear: (d) => !!nearestItem((it) => it.kind === 'enemy' && !it.sinking && !it.hidden, d),
+  treasureNear: (r) =>
+    world.items.find((i) => (i.kind === 'xspot' || i.kind === 'bigx') && !i.dead && dist(i.g.position.x, i.g.position.z, cap.x, cap.z) < r) ?? null,
+});
+
+// Внешний вид с верфи: корабль, паруса, фигура, шляпа, питомец.
+let hullScale = 1;
+function applyLooks() {
+  const L = save.look;
+  hullScale = HULLS[L.hull]?.scale ?? 1;
+  ship.setHull(L.hull);
+  ship.setSails(L.sail);
+  ship.setFigure(L.figure);
+  crew.setCaptainHat(L.hat);
+  pet.set(L.pet);
+  if (mode === 'port') shields = maxShields();
+}
+
+// Верфь: купить один раз, выбирать сколько угодно.
+let yardTab = 'hull';
+function openYard() {
+  unlockAudio();
+  renderYardScreen();
+  $('scYard').classList.remove('hidden');
+}
+
+function renderYardScreen() {
+  $('yardGold').textContent = save.gold;
+  renderYard($('yardItems'), $('yardTabs'), save, yardTab, (tab) => {
+    yardTab = tab;
+    renderYardScreen();
+  }, pickLook);
+}
+
+function pickLook(cat, item, btn) {
+  unlockAudio();
+  if (!owns(save, cat, item.id)) {
+    if (save.gold < item.price) {
+      sfx.nope();
+      btn.classList.remove('shake');
+      void btn.offsetWidth;
+      btn.classList.add('shake');
+      return;
+    }
+    save.gold -= item.price;
+    save.owned.push(`${cat}:${item.id}`);
+    sfx.buy();
+  } else {
+    sfx.step();
+  }
+  save.look[cat] = item.id;
+  storeSave(save);
+  applyLooks();
+  renderYardScreen();
+  renderPort();
+  updateHud();
 }
 
 // Таверна: нанять моряка за золото из банка.
@@ -890,7 +956,9 @@ function salute() {
 function hullHits(x, z, h) {
   const c = Math.cos(h);
   const s = Math.sin(h);
-  for (const [lx, lz] of HULL_POINTS) {
+  for (const [hx, hz] of HULL_POINTS) {
+    const lx = hx * hullScale;
+    const lz = hz * hullScale;
     if (terrain.groundAt(x + lx * c + lz * s, z - lx * s + lz * c) !== undefined) return true;
   }
   return false;
@@ -902,7 +970,9 @@ function shoreAway(x, z, h) {
   const s = Math.sin(h);
   let ax = 0;
   let az = 0;
-  for (const [lx, lz] of HULL_POINTS) {
+  for (const [hx, hz] of HULL_POINTS) {
+    const lx = hx * hullScale;
+    const lz = hz * hullScale;
     const px = x + lx * c + lz * s;
     const pz = z - lx * s + lz * c;
     if (terrain.groundAt(px, pz) !== undefined) {
@@ -977,7 +1047,7 @@ function updateSea(dt, mv) {
     throttle = c >= 0 ? m * (0.35 + 0.65 * c) : m * 0.45 * c;
   }
   boostT = Math.max(0, boostT - dt);
-  const top = SHIP_SPEED * (1 + 0.15 * save.up.sails + 0.25 * cards.count('wind')) * (boostT > 0 ? 1.5 : 1) * roles.speedMult;
+  const top = SHIP_SPEED * (1 + 0.15 * save.up.sails + 0.25 * cards.count('wind') + 0.04 * (HULLS[save.look.hull]?.tier ?? 0)) * (boostT > 0 ? 1.5 : 1) * roles.speedMult;
   boat.speed += (throttle * top - boat.speed) * Math.min(1, dt * 1.2);
   moveBoat(dt);
   const turnRate = wrapAngle(boat.heading - before) / Math.max(dt, 1e-3);
@@ -1315,6 +1385,8 @@ function updateCamera(dt) {
     lookY = 3;
   } else {
     camYaw += wrapAngle(boat.heading - camYaw) * Math.min(1, dt * 1.5);
+    back *= hullScale; // большой корабль — камера дальше и выше, паруса не закрывают вид
+    height *= hullScale;
     fx0 = boat.x;
     fz0 = boat.z;
   }
@@ -1648,6 +1720,8 @@ $('goBtn').addEventListener('click', leavePort);
 $('cardsSkip').addEventListener('click', closeCards);
 $('legendBtn').addEventListener('click', openLegend);
 $('tavernBtn').addEventListener('click', openTavern);
+$('yardBtn').addEventListener('click', openYard);
+$('yardClose').addEventListener('click', () => $('scYard').classList.add('hidden'));
 $('tavernClose').addEventListener('click', () => $('scTavern').classList.add('hidden'));
 $('legendGo').addEventListener('click', () => {
   $('scLegend').classList.add('hidden');
@@ -1788,7 +1862,7 @@ function frame(now) {
     hostile: mode === 'sea',
     onEnemyFire: enemyFires,
     magnet: onLand
-      ? { x: cap.x, z: cap.z, r: effect.magnet[save.up.magnet] * 0.5 + 8 * cards.count('magnet'), coins: true }
+      ? { x: cap.x, z: cap.z, r: effect.magnet[save.up.magnet] * 0.5 + 8 * cards.count('magnet') + pet.landMagnet, coins: true }
       : { x: boat.x, z: boat.z, r: effect.magnet[save.up.magnet] + 4 + 14 * cards.count('magnet'), chests: true },
   });
   battle.update(dt, t, battleHooks);
@@ -1797,6 +1871,7 @@ function frame(now) {
   fairy.update(dt, t);
   gunner.update(dt, t);
   roles.update(dt, t);
+  pet.update(dt, t);
   updateActors(dt, focusX, focusZ);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
@@ -1838,6 +1913,7 @@ applyGraphics();
 unloadCargo(false); // игру закрыли посреди заплыва — золото из трюма не пропадает
 world.spawnLoot(lootOptions());
 quests.ensure();
+applyLooks();
 show('port');
 updateHud();
 if (!save.story.legend) openLegend();
@@ -1848,7 +1924,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, sky, story, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, pet, sky, story, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)

@@ -824,6 +824,118 @@ h3 {
   z-index: 6;
 }
 
+/* ---------- верфь ---------- */
+.head-btns {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.head-btns .icon-btn {
+  width: 42px;
+  height: 42px;
+  font-size: 19px;
+}
+
+#scYard {
+  z-index: 5;
+}
+
+.yard {
+  width: min(520px, 100%) !important;
+}
+
+.yard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.yard-tab {
+  flex: 1 1 auto;
+  padding: 7px 8px;
+  cursor: pointer;
+  font: 800 13px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 1px 1px 0 #3a3f42;
+  background: #5f6569;
+  border: 3px solid #3f4447;
+}
+
+.yard-tab.on {
+  background: var(--wood);
+  border-color: var(--gold);
+}
+
+.yard-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+
+.yard-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  cursor: pointer;
+  color: #f4f1e8;
+  text-shadow: 1px 1px 0 #3a3f42;
+  background: #5f6569;
+  border-top: 4px solid #868c90;
+  border-left: 4px solid #868c90;
+  border-right: 4px solid #3f4447;
+  border-bottom: 4px solid #3f4447;
+}
+
+.yard-item.can,
+.yard-item.have {
+  background: #3f8f4a;
+  border-color: #63b46d #2a6632 #2a6632 #63b46d;
+}
+
+.yard-item.chosen {
+  background: #7a5230;
+  border-color: var(--gold);
+}
+
+.yard-item.shake {
+  animation: shake 0.3s;
+}
+
+.yi-icon {
+  font-size: 28px;
+}
+
+.yi-swatch {
+  width: 40px;
+  height: 28px;
+  border: 3px solid rgba(0, 0, 0, 0.35);
+}
+
+.yi-name {
+  font: 800 14px system-ui, sans-serif;
+}
+
+.yi-text {
+  font: 600 11px/1.25 system-ui, sans-serif;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.yi-state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  font: 800 14px system-ui, sans-serif;
+}
+
+.yard-item.cant .yi-state {
+  color: #ffc2b8;
+}
+
 /* ---------- таверна ---------- */
 #scTavern {
   z-index: 5;

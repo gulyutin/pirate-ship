@@ -13,13 +13,19 @@ const GUN = 0x2e2e30;
 const GOLD = 0xf6c944;
 const SKIN = 0xf0c49a;
 
-// Цвет парусов растёт вместе с улучшением «Паруса».
-const SAIL_COLORS = [
-  [0x7d5eb8, 0x6b4fa0], // фиолетовые
-  [0xc0453a, 0xa3362d], // красные
-  [0x3a6fc0, 0x2f5aa0], // синие
-  [0xe8b830, 0xd49b1f], // золотые
+// Цвет парусов выбирается на верфи; улучшение «Паруса» — золотые полосы на гроте.
+export const SAILS = [
+  { id: 'purple', name: 'Фиолетовые', main: 0x7d5eb8, top: 0x6b4fa0 },
+  { id: 'red', name: 'Красные', main: 0xc0453a, top: 0xa3362d },
+  { id: 'blue', name: 'Синие', main: 0x3a6fc0, top: 0x2f5aa0 },
+  { id: 'gold', name: 'Золотые', main: 0xe8b830, top: 0xd49b1f },
+  { id: 'green', name: 'Зелёные', main: 0x3f9f5a, top: 0x328a4c },
+  { id: 'black', name: 'Чёрные', main: 0x2a2624, top: 0x1d1a18 },
+  { id: 'white', name: 'Белые', main: 0xf2eee4, top: 0xdcd8cc },
+  { id: 'pink', name: 'Розовые', main: 0xf07ab8, top: 0xd8649f },
+  { id: 'orange', name: 'Оранжевые', main: 0xf08a24, top: 0xd8761a },
 ];
+const sailById = (id) => SAILS.find((s) => s.id === id) ?? SAILS[0];
 
 // Цвет флага выбирается в порту.
 export const FLAG_COLORS = [
@@ -85,8 +91,11 @@ export function createShip(scene) {
   cube(g, RAIL, 1.2, 24.3, 1.2, 0, DECK_Y + 24.3 / 2, -1);
   cube(g, RAIL, 10, 0.8, 0.8, 0, 18.9, -1);
   cube(g, RAIL, 7.5, 0.8, 0.8, 0, 22.3, -1);
-  const mainSail = cube(g, SAIL_COLORS[0][0], 9, 4.6, 0.6, 0, 16.2, -0.1);
-  const topSail = cube(g, SAIL_COLORS[0][1], 6.5, 2.6, 0.6, 0, 20.6, -0.1);
+  const mainSail = cube(g, SAILS[0].main, 9, 4.6, 0.6, 0, 16.2, -0.1);
+  const topSail = cube(g, SAILS[0].top, 6.5, 2.6, 0.6, 0, 20.6, -0.1);
+  let sail = SAILS[0];
+  let mains = [mainSail]; // все нижние паруса (на бриге и больше — их несколько)
+  let tops = [topSail];
 
   // череп на гроте — со стороны кормы, чтобы его было видно из камеры
   cube(g, BONE, 2.2, 2.2, 0.3, 0, 16.8, 0.35);
@@ -142,14 +151,19 @@ export function createShip(scene) {
     }
     // железные обручи на корпусе
     [-5.8, -2, 2].slice(0, up.hull).forEach((z) => cube(parts, IRON, 7.3, 1.35, 0.5, 0, -0.6, z));
-    const [main, top] = SAIL_COLORS[up.sails] ?? SAIL_COLORS[0];
-    mainSail.material = lambert(main);
-    topSail.material = lambert(top);
-    // золотая фигура на носу — магнит
+    // улучшение «Паруса» — золотые полосы по гроту
+    for (let i = 0; i < up.sails; i++) cube(parts, GOLD, 9.1, 0.25, 0.66, 0, 14.4 + i * 0.9, -0.1);
+    // магнит — красная подкова на бушприте, больше с каждым уровнем
     if (up.magnet >= 1) {
-      const s = 0.5 + up.magnet * 0.3;
-      cube(parts, GOLD, s, s, s, 0, 1.4 + s / 2, -10.3);
-      if (up.magnet >= 3) cube(parts, 0xd8453a, 0.4, 0.4, 0.4, 0, 1.6 + s, -10.3);
+      const s = 0.6 + up.magnet * 0.2;
+      const m = new THREE.Group();
+      m.position.set(0, 3.2, -13.4);
+      parts.add(m);
+      for (const sx of [-1, 1]) {
+        cube(m, 0xd8453a, 0.3 * s, 0.9 * s, 0.3 * s, sx * 0.35 * s, 0, 0);
+        cube(m, 0xd9dde0, 0.32 * s, 0.25 * s, 0.32 * s, sx * 0.35 * s, -0.55 * s, 0);
+      }
+      cube(m, 0xd8453a, 1.0 * s, 0.3 * s, 0.3 * s, 0, 0.45 * s, 0);
     }
   }
 
@@ -175,7 +189,111 @@ export function createShip(scene) {
   trophy.visible = false;
   g.add(trophy);
 
-  return { group: g, animate, setUpgrades, setFlag, setTrophy: (on) => (trophy.visible = on), muzzles: () => muzzles };
+  // Типы корабля: у брига вторая мачта, у фрегата третья и пушечные порты,
+  // у галеона высокая корма с окнами, золотая отделка и фонари.
+  const hullParts = new THREE.Group();
+  g.add(hullParts);
+  function mast(z, h, sailW, sailY, topW) {
+    cube(hullParts, RAIL, 1.0, h, 1.0, 0, DECK_Y + h / 2, z);
+    cube(hullParts, RAIL, sailW + 1, 0.7, 0.7, 0, sailY + 2.3, z);
+    mains.push(cube(hullParts, sail.main, sailW, 3.8, 0.5, 0, sailY, z + 0.9));
+    if (topW) {
+      cube(hullParts, RAIL, topW + 1, 0.6, 0.6, 0, sailY + 5.4, z);
+      tops.push(cube(hullParts, sail.top, topW, 2.2, 0.5, 0, sailY + 4.1, z + 0.9));
+    }
+  }
+  function setHull(type) {
+    hullParts.clear();
+    mains = [mainSail];
+    tops = [topSail];
+    const tier = ['sloop', 'brig', 'frigate', 'galleon'].indexOf(type);
+    g.scale.setScalar([1, 1.12, 1.24, 1.36][Math.max(0, tier)]);
+    if (tier >= 1) {
+      mast(-6.2, 19, 7.4, 12.6, 5); // фок-мачта
+      for (let i = 0; i < 4; i++) cube(hullParts, 0xf2eee4, 3.2 - i * 0.7, 1.1, 0.3, 0, 4.6 + i * 1.1, -9.4 + i * 0.8); // кливер
+    }
+    if (tier >= 2) {
+      mast(3.1, 16, 5.6, 11, 0); // бизань
+      for (const z of [-5, -2.5, 0, 2.5]) {
+        for (const sx of [-1, 1]) {
+          cube(hullParts, DARK, 0.12, 0.7, 0.9, sx * 3.58, -0.3, z);
+          cube(hullParts, GUN, 0.8, 0.3, 0.3, sx * 3.9, -0.3, z);
+        }
+      }
+    }
+    if (tier >= 3) {
+      cube(hullParts, 0x7a5230, 6.6, 3.6, 1.8, 0, 3.4, 7.2); // высокая корма
+      for (const x of [-2, 0, 2]) {
+        cube(hullParts, GOLD, 1.4, 1.2, 0.1, x, 3.6, 8.12);
+        cube(hullParts, 0xffe9a0, 1.1, 0.9, 0.12, x, 3.6, 8.14);
+      }
+      for (const sx of [-1, 1]) cube(hullParts, GOLD, 1.05, 0.2, 15.5, sx * 3.4, 1.95, 0); // золотые поручни
+      cube(hullParts, GOLD, 6.8, 0.2, 0.3, 0, 5.3, 7.2);
+      for (const x of [-2.8, 0, 2.8]) {
+        cube(hullParts, 0xffb347, 0.6, 0.7, 0.6, x, 5.8, 7.6);
+        glow(hullParts, 0xffb347, 3, x, 5.8, 7.6, 0.45);
+      }
+    }
+    setSails(sail.id);
+  }
+  function setSails(id) {
+    sail = sailById(id);
+    for (const m of mains) m.material = lambert(sail.main);
+    for (const m of tops) m.material = lambert(sail.top);
+  }
+
+  // фигура на носу
+  const figure = new THREE.Group();
+  figure.position.set(0, 0.2, -10.9); // под бушпритом, чтобы он не протыкал фигуру
+  g.add(figure);
+  function setFigure(id) {
+    figure.clear();
+    figure.rotation.x = 0;
+    const F = (c, w, h, d, x, y, z) => cube(figure, c, w, h, d, x, y, z);
+    if (id === 'mermaid') {
+      F(0x2f9f8a, 0.7, 1.2, 0.6, 0, 0, 0);
+      F(0x2f9f8a, 0.5, 0.6, 1.0, 0, -0.6, 0.3);
+      F(0x3fb89a, 1.3, 0.2, 0.5, 0, -0.9, 0.8);
+      F(SKIN, 0.7, 0.9, 0.5, 0, 1.0, 0);
+      F(SKIN, 0.6, 0.6, 0.6, 0, 1.75, -0.1);
+      F(0xf6c944, 0.75, 0.9, 0.35, 0, 1.6, 0.25);
+      for (const sx of [-1, 1]) F(SKIN, 0.2, 0.2, 0.8, sx * 0.3, 1.2, -0.5);
+      figure.rotation.x = -0.35;
+    } else if (id === 'dolphin') {
+      F(0x6a8fb0, 0.8, 0.8, 1.6, 0, 0.6, -0.2).rotation.x = 0.4;
+      F(0x6a8fb0, 0.6, 0.6, 1.0, 0, 0.1, 0.6).rotation.x = -0.3;
+      F(0x6a8fb0, 0.3, 0.3, 0.8, 0, 1.0, -1.1);
+      F(0x5a7f9e, 0.2, 0.7, 0.6, 0, 1.2, 0.1);
+      F(0xdfe8f0, 0.5, 0.2, 1.0, 0, 0.35, -0.3);
+    } else if (id === 'lion') {
+      F(0xd9a534, 1.6, 1.6, 0.6, 0, 1.0, 0);
+      F(0xe8c070, 1.0, 1.0, 0.4, 0, 1.0, -0.45);
+      F(0x3a2a1a, 0.3, 0.25, 0.1, 0, 0.85, -0.68);
+      for (const sx of [-1, 1]) {
+        F(0x111111, 0.15, 0.15, 0.1, sx * 0.25, 1.2, -0.68);
+        F(0xd9a534, 0.3, 0.3, 0.2, sx * 0.45, 1.6, -0.4);
+      }
+    } else if (id === 'eagle') {
+      F(GOLD, 0.6, 1.0, 0.8, 0, 0.6, 0);
+      F(0xf4f1e8, 0.5, 0.5, 0.5, 0, 1.3, -0.2);
+      F(0xf6d860, 0.2, 0.2, 0.4, 0, 1.2, -0.55);
+      for (const sx of [-1, 1]) F(GOLD, 1.6, 0.2, 0.8, sx * 1.0, 1.0, 0).rotation.z = sx * 0.5;
+    } else if (id === 'dragon') {
+      F(0x3fa88a, 0.7, 1.2, 0.7, 0, 0.5, 0);
+      F(0x3fa88a, 1.0, 0.9, 1.6, 0, 1.3, -0.6);
+      F(0x2f8f7a, 0.9, 0.3, 1.2, 0, 0.8, -0.8);
+      F(0xc0392b, 0.6, 0.15, 0.8, 0, 1.0, -1.0);
+      for (const sx of [-1, 1]) {
+        F(0xf6e04a, 0.2, 0.2, 0.1, sx * 0.35, 1.5, -1.42);
+        F(GOLD, 0.2, 0.7, 0.2, sx * 0.3, 1.95, -0.2).rotation.x = 0.5;
+      }
+    }
+  }
+
+  return {
+    group: g, animate, setUpgrades, setFlag, setHull, setSails, setFigure,
+    setTrophy: (on) => (trophy.visible = on), muzzles: () => muzzles,
+  };
 }
 
 // Вражеский бриг: тёмное дерево, чёрный парус с черепом. Нос смотрит на игрока (+z).

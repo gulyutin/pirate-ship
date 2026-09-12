@@ -52,6 +52,7 @@
               <p class="sub">первого класса</p>
             </div>
             <div class="head-btns">
+              <button class="icon-btn" id="yardBtn" aria-label="Верфь">🛠</button>
               <button class="icon-btn" id="tavernBtn" aria-label="Таверна">🍺</button>
               <button class="icon-btn" id="legendBtn" aria-label="Легенда">📜</button>
               <button class="icon-btn" id="portPassBtn" aria-label="Паспорт">📘</button>
@@ -92,6 +93,18 @@
           <p class="last" id="cardsSub"></p>
           <div class="lcards" id="cardsRow"></div>
           <button class="btn hidden" id="cardsSkip">Не надо, спасибо</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scYard">
+        <div class="panel yard">
+          <div class="port-head">
+            <h2>🛠 Верфь</h2>
+            <button class="icon-btn" id="yardClose" aria-label="Закрыть">✕</button>
+          </div>
+          <div class="bank small-bank"><span class="cube"></span><span id="yardGold">0</span></div>
+          <div class="yard-tabs" id="yardTabs"></div>
+          <div class="yard-items" id="yardItems"></div>
         </div>
       </div>
 
