@@ -379,6 +379,9 @@ export function createSky(scene, renderer, camera, hooks) {
     place(s.fx, s.fz);
   }
 
+  // цвета неба и свет — сразу, ещё до первого кадра
+  update(0, 0, { fx: 0, fz: 0, mode: 'port' });
+
   return {
     sun,
     update,

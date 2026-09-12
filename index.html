@@ -52,6 +52,7 @@
               <p class="sub">первого класса</p>
             </div>
             <div class="head-btns">
+              <button class="icon-btn" id="tavernBtn" aria-label="Таверна">🍺</button>
               <button class="icon-btn" id="legendBtn" aria-label="Легенда">📜</button>
               <button class="icon-btn" id="portPassBtn" aria-label="Паспорт">📘</button>
               <button class="icon-btn" id="muteBtn" aria-label="Звук">🔊</button>
@@ -91,6 +92,18 @@
           <p class="last" id="cardsSub"></p>
           <div class="lcards" id="cardsRow"></div>
           <button class="btn hidden" id="cardsSkip">Не надо, спасибо</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scTavern">
+        <div class="panel tavern">
+          <div class="port-head">
+            <h2>🍺 Таверна</h2>
+            <button class="icon-btn" id="tavernClose" aria-label="Закрыть">✕</button>
+          </div>
+          <p class="last">«Весёлый осьминог»: моряки хотят в твою команду. Каждый умеет что-то своё! Платишь золотом из банка.</p>
+          <div class="bank small-bank"><span class="cube"></span><span id="tavernGold">0</span></div>
+          <div class="recruits" id="recruits"></div>
         </div>
       </div>
 

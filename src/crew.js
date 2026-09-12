@@ -66,7 +66,7 @@ function nameplate(text, y) {
   tex.generateMipmaps = false;
 
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, fog: false }));
-  const UNIT = 0.065; // мировых единиц на пиксель таблички
+  const UNIT = 0.055; // мировых единиц на пиксель таблички
   sprite.scale.set(canvas.width * UNIT, H * UNIT, 1);
   sprite.position.y = y;
   sprite.renderOrder = 10;
@@ -127,7 +127,50 @@ function bandana() {
   return b;
 }
 
-function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false) {
+// Шляпы и вещи моряков из таверны.
+function roleHat(role) {
+  const h = new THREE.Group();
+  if (role === 'cook') {
+    cube(h, 0xffffff, 1.3, 0.3, 1.2, 0, 3.8, 0);
+    cube(h, 0xf4f4f4, 1.4, 0.9, 1.3, 0, 4.35, 0); // поварской колпак
+  } else if (role === 'navigator') {
+    cube(h, 0x1d2a4a, 2.3, 0.55, 0.9, 0, 3.95, 0); // двууголка
+    cube(h, 0xe8b830, 2.35, 0.12, 0.95, 0, 3.72, 0);
+    cube(h, 0xe8b830, 0.3, 0.3, 0.1, 0, 4.0, -0.5);
+  } else if (role === 'diver') {
+    cube(h, 0xc0392b, 1.3, 0.55, 1.2, 0, 3.85, 0); // шапка с помпоном
+    cube(h, 0xffffff, 0.35, 0.35, 0.35, 0, 4.25, 0);
+  } else if (role === 'carpenter') {
+    cube(h, 0xe8b830, 1.3, 0.4, 1.2, 0, 3.8, 0); // кепка
+    cube(h, 0xe8b830, 1.0, 0.12, 0.5, 0, 3.65, -0.75);
+  } else {
+    cube(h, 0x3f7a3a, 1.9, 0.3, 1.7, 0, 3.8, 0); // шляпа с пером
+    cube(h, 0x3f7a3a, 1.2, 0.6, 1.1, 0, 4.2, 0);
+    cube(h, 0xe0302a, 0.15, 1.0, 0.15, 0.5, 4.6, 0.3).rotation.z = -0.4;
+  }
+  return h;
+}
+
+function roleGear(g, role, armR) {
+  if (role === 'cook') {
+    cube(g, 0xffffff, 1.0, 1.4, 0.1, 0, 1.5, -0.48); // фартук
+    cube(armR, 0x9a9a9a, 0.12, 1.0, 0.12, 0, -1.9, -0.2); // половник
+  } else if (role === 'navigator') {
+    cube(g, 0x1d2a4a, 1.46, 0.5, 0.96, 0, 0.75, 0); // полы камзола
+    cube(armR, 0xb08a3a, 0.26, 0.26, 1.2, 0, -1.6, -0.5); // подзорная труба
+  } else if (role === 'diver') {
+    for (const y of [1.1, 1.6, 2.1]) cube(g, 0xffffff, 1.44, 0.16, 0.94, 0, y, 0); // тельняшка
+  } else if (role === 'carpenter') {
+    cube(g, 0x6a4a2e, 1.46, 0.25, 0.96, 0, 0.85, 0); // пояс с инструментами
+    cube(armR, 0x7a5230, 0.14, 1.0, 0.14, 0, -1.9, 0); // молоток
+    cube(armR, 0x6a6f74, 0.5, 0.25, 0.25, 0, -2.35, 0);
+  } else if (role === 'musician') {
+    cube(g, 0xc0392b, 1.3, 0.8, 0.5, 0, 1.9, -0.7); // гармошка
+    for (const x of [-0.25, 0.25]) cube(g, 0xf4f4f4, 0.12, 0.82, 0.52, x, 1.9, -0.7);
+  }
+}
+
+function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false, role = null) {
   const g = new THREE.Group();
   const legL = limb(g, -0.4, 1.2, 1.2, 0.6, 0.8, PANTS);
   const legR = limb(g, 0.4, 1.2, 1.2, 0.6, 0.8, PANTS);
@@ -166,9 +209,10 @@ function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false)
     cube(g, INK, 1.24, 0.08, 1.14, 0, 3.4, 0); // ремешок вокруг головы
     cube(g, 0x4a2e1a, 0.7, 0.14, 0.08, 0, 3.0, -0.6); // усы
   }
-  const hat = fairy ? tiara() : gunner ? bandana() : pirateHat();
+  const hat = fairy ? tiara() : gunner ? bandana() : role ? roleHat(role) : pirateHat();
   g.add(hat);
   g.userData.hat = hat;
+  if (role) roleGear(g, role, armR);
   if (canGoof) {
     const goofHat = propellerHat();
     goofHat.visible = false; // надевается, когда человек становится балбесом
@@ -179,6 +223,9 @@ function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false)
   g.userData.limbs = [legL, legR, armL, armR];
   return g;
 }
+
+// Таблички матросов лесенкой: чем дальше к носу, тем выше — не наезжают друг на друга.
+const labelY = (i) => 6.6 + i * 0.6;
 
 // Шаг: ноги и руки качаются навстречу друг другу. amount 0 — стоим ровно.
 export function walkPose(g, phase, amount) {
@@ -206,7 +253,7 @@ export function createCrew(shipGroup) {
     const canGoof = goofPool.has(name);
     const fairy = fairyPool.has(name);
     const gunner = gunnerPool.has(name);
-    const g = makeSailor(name, SHIRTS[i % SHIRTS.length], 7.4 + i * 0.3, canGoof, fairy, gunner);
+    const g = makeSailor(name, SHIRTS[i % SHIRTS.length], labelY(i), canGoof, fairy, gunner);
     const home = new THREE.Vector3(i % 2 ? 2.2 : -2.2, DECK_Y, 2.6 - i * 1.25);
     g.position.copy(home);
     shipGroup.add(g);
@@ -263,10 +310,27 @@ export function createCrew(shipGroup) {
     }
   }
 
+  const people = [captainP, ...sailors];
+
+  // Новый матрос из таверны — встаёт на свободное место на палубе.
+  function addSailor(name, role) {
+    const i = sailors.length;
+    if (i >= MAX_SAILORS) return null;
+    const g = makeSailor(name, SHIRTS[i % SHIRTS.length], labelY(i), true, false, false, role);
+    const home = new THREE.Vector3(i % 2 ? 2.2 : -2.2, DECK_Y, 2.6 - i * 1.25);
+    g.position.copy(home);
+    shipGroup.add(g);
+    const s = { name, g, home, alive: true, fall: null, canGoof: true, role };
+    sailors.push(s);
+    people.push(s);
+    return s;
+  }
+
   return {
     captain,
     captainSpot,
-    people: [captainP, ...sailors],
+    people,
+    addSailor,
     sailors,
     reset,
     hit,

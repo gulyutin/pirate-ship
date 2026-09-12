@@ -16,6 +16,7 @@ import { createFairy } from './fairy.js';
 import { createGunner } from './gunner.js';
 import { createStory, LEGEND } from './story.js';
 import { BOSSES, kraken } from './bosses.js';
+import { RECRUITS, renderTavern, createRoles } from './tavern.js';
 import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
@@ -93,6 +94,10 @@ const sky = createSky(scene, renderer, camera, {
 const water = createWater(scene, terrain.groundAt);
 const ship = createShip(scene);
 const crew = createCrew(ship.group);
+for (const id of save.hired) {
+  const r = RECRUITS.find((x) => x.id === id);
+  if (r) crew.addSailor(r.name, r.id); // нанятые в таверне — снова на палубе
+}
 const world = createWorld(scene, terrain);
 const battle = createBattle(scene);
 const fx = createFx(scene);
@@ -118,7 +123,7 @@ const cap = { x: 0, z: 0, y: 0, vy: 0, air: false, facing: 0, phase: 0, stride: 
 let camYaw = DOCK.heading;
 let t = 0;
 let lean = 0;
-let shields = effect.shields[save.up.hull];
+let shields = maxShields();
 let inv = 0;
 let shake = 0;
 let cannonT = 0;
@@ -233,6 +238,60 @@ const story = createStory(save, {
   },
 });
 story.ensure();
+
+const roles = createRoles(scene, crew, {
+  say,
+  fx,
+  sfx,
+  mode: () => mode,
+  ship: ship.group,
+  gold: (n) => addGold(n),
+  shields: () => shields,
+  maxShields,
+  addShield: () => {
+    shields++;
+    updateHud();
+  },
+  target: () => fairyTarget(),
+  busy: (p) => balbes.acting(p),
+});
+
+// Прочность корпуса за заплыв: улучшение «Корпус» и плотник из таверны.
+function maxShields() {
+  return effect.shields[save.up.hull] + (save.hired.includes('carpenter') ? 1 : 0);
+}
+
+// Таверна: нанять моряка за золото из банка.
+function openTavern() {
+  unlockAudio();
+  renderTavernScreen();
+  $('scTavern').classList.remove('hidden');
+}
+
+function renderTavernScreen() {
+  $('tavernGold').textContent = save.gold;
+  renderTavern($('recruits'), save, hire);
+}
+
+function hire(r, btn) {
+  unlockAudio();
+  if (save.gold < r.price) {
+    sfx.nope();
+    btn.classList.remove('shake');
+    void btn.offsetWidth;
+    btn.classList.add('shake');
+    return;
+  }
+  save.gold -= r.price;
+  save.hired.push(r.id);
+  storeSave(save);
+  crew.addSailor(r.name, r.id);
+  if (r.id === 'carpenter') shields = maxShields();
+  sfx.buy();
+  renderTavernScreen();
+  renderPort();
+  updateHud();
+}
 
 // Ближайший к кораблю предмет, подходящий под ok, не дальше maxD.
 function nearestItem(ok, maxD) {
@@ -395,6 +454,7 @@ function enterPort(fromWreck = false) {
   story.cancel();
   fairy.cancel();
   gunner.cancel();
+  roles.cancel();
   fishing.stop();
   events.clear();
   cards.reset();
@@ -405,7 +465,7 @@ function enterPort(fromWreck = false) {
   portLock = true;
   boat.speed = 0;
   crew.reset();
-  shields = effect.shields[save.up.hull];
+  shields = maxShields();
   inv = 0;
   boostT = 0;
   ship.group.visible = true;
@@ -917,7 +977,7 @@ function updateSea(dt, mv) {
     throttle = c >= 0 ? m * (0.35 + 0.65 * c) : m * 0.45 * c;
   }
   boostT = Math.max(0, boostT - dt);
-  const top = SHIP_SPEED * (1 + 0.15 * save.up.sails + 0.25 * cards.count('wind')) * (boostT > 0 ? 1.5 : 1);
+  const top = SHIP_SPEED * (1 + 0.15 * save.up.sails + 0.25 * cards.count('wind')) * (boostT > 0 ? 1.5 : 1) * roles.speedMult;
   boat.speed += (throttle * top - boat.speed) * Math.min(1, dt * 1.2);
   moveBoat(dt);
   const turnRate = wrapAngle(boat.heading - before) / Math.max(dt, 1e-3);
@@ -1587,6 +1647,8 @@ function setPaused(on) {
 $('goBtn').addEventListener('click', leavePort);
 $('cardsSkip').addEventListener('click', closeCards);
 $('legendBtn').addEventListener('click', openLegend);
+$('tavernBtn').addEventListener('click', openTavern);
+$('tavernClose').addEventListener('click', () => $('scTavern').classList.add('hidden'));
 $('legendGo').addEventListener('click', () => {
   $('scLegend').classList.add('hidden');
   save.story.legend = true;
@@ -1734,6 +1796,7 @@ function frame(now) {
   balbes.update(dt, t);
   fairy.update(dt, t);
   gunner.update(dt, t);
+  roles.update(dt, t);
   updateActors(dt, focusX, focusZ);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
@@ -1785,7 +1848,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, gunner, sky, story, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, sky, story, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)

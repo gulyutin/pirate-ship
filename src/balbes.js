@@ -13,7 +13,7 @@ const v = (p, m, f) => (p.fem ? f : m); // уснул / уснула
 
 // hooks: say, fx, sfx, mode(), walking(), gold(n), boost(sec), salute(), cannons()
 export function createBalbes(crew, hooks) {
-  const pool = crew.people.filter((p) => p.canGoof);
+  const pool = () => crew.people.filter((p) => p.canGoof); // и нанятые в таверне тоже
   let current = null;
   let switchT = 15 + Math.random() * 10; // первый балбес появится не сразу
   let nextT = 0;
@@ -198,9 +198,9 @@ export function createBalbes(crew, hooks) {
 
     // пора выбрать нового балбеса
     switchT -= dt;
-    if (switchT <= 0 && pool.length) {
+    if (switchT <= 0 && pool().length) {
       switchT = 60 + Math.random() * 40;
-      const candidates = pool.filter((p) => p !== current && p.alive);
+      const candidates = pool().filter((p) => p !== current && p.alive);
       if (candidates.length) {
         crown(pick(candidates));
         return;
@@ -231,7 +231,9 @@ export function createBalbes(crew, hooks) {
     get current() {
       return current;
     },
-    hasGoofs: pool.length > 0,
+    get hasGoofs() {
+      return pool().length > 0;
+    },
     acting: (p) => act?.who === p,
     captainBusy: () => act?.who.isCaptain && act.kind === 'trip',
   };

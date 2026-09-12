@@ -331,6 +331,19 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     block(hs.x + 2.3, hy + 3, hs.z + 3.55, 1.4, 1.2, 0.2, 0x9cd3f0);
     markSolid(hs.x, hs.z, 4.2, 3.7);
 
+    // таверна «Весёлый осьминог»: дом, светящееся окно и вывеска-кружка
+    const tv = { x: -7, z: 3 };
+    const ty = top.get(key(cellOf(tv.x), cellOf(tv.z)));
+    block(tv.x, ty + 2, tv.z, 6, 4, 5, 0x9c6d44);
+    for (let s = 0; s < 3; s++) block(tv.x, ty + 4.4 + s * 0.8, tv.z, 7 - s * 2.2, 0.8, 6, 0x5a3a20);
+    block(tv.x + 3.05, ty + 1.3, tv.z, 0.2, 2.6, 1.4, 0x4a3120);
+    block(tv.x + 3.1, ty + 3.2, tv.z - 1.6, 0.2, 1, 1, 0xffd27a);
+    glow(scene, 0xffd27a, 3, tv.x + 3.3, ty + 3.2, tv.z - 1.6, 0.35);
+    block(tv.x + 3.6, ty + 3.6, tv.z + 1.6, 1.0, 0.2, 0.2, 0x4a3120);
+    block(tv.x + 4.0, ty + 2.8, tv.z + 1.6, 0.9, 1.0, 0.2, 0xe8b830);
+    block(tv.x + 4.0, ty + 3.35, tv.z + 1.6, 1.0, 0.25, 0.25, 0xf4f4f4);
+    markSolid(tv.x, tv.z, 3, 2.5);
+
     for (const [x, z] of [[-6, 10], [15, 8], [-16, 4]]) {
       palm(cellOf(x), cellOf(z), top.get(key(cellOf(x), cellOf(z))));
     }
