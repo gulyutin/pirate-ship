@@ -129,6 +129,11 @@ export const sfx = {
     tone(1250, 0.2, { type: 'sawtooth', vol: 0.05, to: 850, delay: 0.25 });
   },
   step: () => tone(330, 0.08, { type: 'triangle', vol: 0.25, to: 440 }),
+  thunder() {
+    noise(2.2, { vol: 0.7, freq: 500, to: 60 });
+    tone(55, 1.8, { type: 'sine', vol: 0.5, to: 30 });
+    noise(1.2, { vol: 0.4, freq: 900, to: 100, delay: 0.25 });
+  },
   magic: () => arp([1319, 1568, 1976, 2637, 1976, 2637], 0.06, { vol: 0.14, type: 'triangle' }),
   discover: () => arp([523, 659, 784, 1047, 784, 1047], 0.09, { vol: 0.22 }),
   dance: () => arp([659, 784, 880, 784, 659, 523, 659, 784], 0.1, { vol: 0.18 }),
@@ -137,6 +142,29 @@ export const sfx = {
     tone(60, 2.5, { type: 'sawtooth', vol: 0.15, to: 200 });
   },
 };
+
+// Шум дождя: бесконечная петля шума, громкость — сила дождя (0..1).
+let rainGain = null;
+export function setRain(level) {
+  if (!ctx) return;
+  if (!rainGain) {
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2400;
+    filter.Q.value = 0.6;
+    rainGain = ctx.createGain();
+    rainGain.gain.value = 0;
+    src.connect(filter).connect(rainGain).connect(master);
+    src.start();
+  }
+  rainGain.gain.value = level * 0.12;
+}
 
 /* ---------- музыка: свои мелодии под разные места ---------- */
 // Ноты записаны строкой «нота:доли», R — пауза. Мелодия и бас одной длины.

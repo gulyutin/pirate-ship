@@ -55,8 +55,8 @@ export function createWater(scene, groundAt) {
     return 0;
   }
 
-  // cx, cz — вокруг какой точки держать воду.
-  function update(t, cx, cz) {
+  // cx, cz — вокруг какой точки держать воду; amp — во сколько раз выше волны (в шторм больше).
+  function update(t, cx, cz, amp = 1) {
     const bi = Math.round(cx / TILE) - HALF;
     const bk = Math.round(cz / TILE) - HALF;
     // цвета привязаны к миру: сдвинулся квадрат — перекрашиваем
@@ -75,7 +75,7 @@ export function createWater(scene, groundAt) {
       const x = (bi + a) * TILE;
       for (let b = 0; b < N; b++) {
         const z = (bk + b) * TILE;
-        const h = Math.round(Math.sin(x * 0.08 + t * 1.6) + Math.sin(z * 0.11 - t * 1.1)) * 0.5;
+        const h = Math.round((Math.sin(x * 0.08 + t * 1.6) + Math.sin(z * 0.11 - t * 1.1)) * amp) * 0.5;
         m.makeTranslation(x, LEVEL + h - TILE / 2, z);
         mesh.setMatrixAt(a * N + b, m);
       }

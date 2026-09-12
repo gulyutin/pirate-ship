@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
-import { cube, glow, voxTime, voxSun, voxCutOn, voxCutAt } from './voxel.js';
+import { voxTime, voxCutOn, voxCutAt } from './voxel.js';
+import { createSky } from './sky.js';
 import { createWater } from './water.js';
 import { createShip, HULL_POINTS, FLAG_COLORS } from './ship.js';
 import { createCrew, walkPose, captainName } from './crew.js';
@@ -12,7 +13,7 @@ import { createControls } from './controls.js';
 import { createMinimap, drawWorldMap } from './minimap.js';
 import { createBalbes } from './balbes.js';
 import { createFairy } from './fairy.js';
-import { sfx, unlockAudio, setMuted, setMusic, setTrack } from './audio.js';
+import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
 import { loadSave, storeSave, resetSave } from './save.js';
@@ -38,8 +39,6 @@ const actBtn = $('actBtn');
 const jumpBtn = $('jumpBtn');
 const boardBtn = $('boardBtn');
 
-const HORIZON = 0xc4e4f3; // дымка у горизонта — в неё уходит дальнее море
-const ZENITH = 0x4f9ee0;
 const SHIP_SPEED = 22; // полный ход без улучшений
 const TURN_RATE = 1.3; // рад/с
 const WALK_SPEED = 9;
@@ -70,54 +69,24 @@ try {
 }
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.shadowMap.type = THREE.PCFShadowMap;
-renderer.setClearColor(HORIZON);
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(HORIZON, 60, 170);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
 
-// Небо — купол с градиентом от голубого зенита к светлой дымке у горизонта.
-const skyGeo = new THREE.SphereGeometry(450, 24, 12);
-{
-  const low = new THREE.Color(HORIZON);
-  const high = new THREE.Color(ZENITH);
-  const c = new THREE.Color();
-  const p = skyGeo.attributes.position;
-  const colors = [];
-  for (let i = 0; i < p.count; i++) {
-    c.lerpColors(low, high, Math.pow(clamp((p.getY(i) / 450) * 2.2, 0, 1), 0.6));
-    colors.push(c.r, c.g, c.b);
-  }
-  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-}
-const sky = new THREE.Mesh(
-  skyGeo,
-  new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }),
-);
-sky.renderOrder = -1;
-scene.add(sky);
-
-// Свет: небо сверху, отражённый снизу, солнце с тенями.
-// С three r155 интенсивность без встроенного множителя π — домножаем сами.
-// Солнце чуть теплее и сильнее неба — тени глубже, картинка объёмнее.
-scene.add(new THREE.HemisphereLight(0xd6ecff, 0x7d6e52, 0.46 * Math.PI));
-scene.add(new THREE.AmbientLight(0xffffff, 0.1 * Math.PI));
-const SUN_DIR = new THREE.Vector3(-30, 50, 25).normalize();
-voxSun.value.copy(SUN_DIR);
-const sun = new THREE.DirectionalLight(0xffe9c8, 0.92 * Math.PI);
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 1, far: 400 });
-sun.shadow.camera.updateProjectionMatrix();
-sun.shadow.bias = -0.0005;
-sun.shadow.normalBias = 0.06;
-scene.add(sun, sun.target);
 
 /* ---------- мир ---------- */
 const save = loadSave();
 const surfaces = createSurfaces(); // парящие ступени паркура, блоки своего острова
 const terrain = createTerrain(scene, surfaces, save.seed ?? undefined);
+// небо, свет, день и ночь, погода; маяк в порту светит лучом
+const sky = createSky(scene, renderer, camera, {
+  say: (msg, sec) => say(msg, sec),
+  sfx,
+  rain: setRain,
+  lighthouse: { x: -11, y: (terrain.groundAt(-11, -9) ?? 0) + 17, z: -9 },
+});
 const water = createWater(scene, terrain.groundAt);
 const ship = createShip(scene);
 const crew = createCrew(ship.group);
@@ -130,27 +99,6 @@ const minimap = createMinimap($('minimap'));
 const controls = createControls(stage, { onAction: doAction, onJump: doJump, onBoard: goAboard });
 const WONDERS = terrain.islands.filter((isl) => !isl.port);
 
-// Облака и квадратное солнце всегда вокруг камеры.
-const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: 0.92 });
-const cloudUnder = new THREE.MeshLambertMaterial({ color: 0xd9e3ec, fog: false, transparent: true, opacity: 0.92 });
-const clouds = [];
-for (let i = 0; i < 12; i++) {
-  const g = new THREE.Group();
-  const n = 2 + Math.floor(Math.random() * 3);
-  for (let k = 0; k < n; k++) {
-    const w = 8 + Math.random() * 8;
-    const d = 6 + Math.random() * 5;
-    const y = Math.random() * 2;
-    const z = Math.random() * 4;
-    cube(g, cloudMat, w, 2.2, d, k * 7, y, z).castShadow = false;
-    cube(g, cloudUnder, w * 0.92, 1, d * 0.92, k * 7, y - 1.5, z).castShadow = false; // тень снизу — облако объёмное
-  }
-  g.userData.off = new THREE.Vector3(Math.random() * 320, 32 + Math.random() * 16, Math.random() * 320);
-  scene.add(g);
-  clouds.push(g);
-}
-const sunCube = cube(scene, new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }), 12, 12, 12);
-glow(sunCube, 0xfff0c0, 5, 0, 0, 0, 0.6, false); // сияние вокруг солнца
 
 /* ---------- сохранение и состояние ---------- */
 ship.setUpgrades(save.up);
@@ -1240,30 +1188,12 @@ function updateCamera(dt) {
   }
 }
 
-function updateSky(focusX, focusZ) {
-  const cx = camera.position.x;
-  const cz = camera.position.z;
-  sky.position.copy(camera.position);
-  const rel = (v) => ((v % 320) + 320) % 320 - 160;
-  for (const c of clouds) {
-    const o = c.userData.off;
-    c.position.set(cx + rel(o.x + t * 1.6 - cx), o.y, cz + rel(o.z - cz));
-  }
-  sunCube.position.set(cx - 70, 80, cz - 150);
-  // тени считаются в квадрате вокруг игрока; шаг сетки — чтобы тени не дрожали
-  const sx = Math.round(focusX / 4) * 4;
-  const sz = Math.round(focusZ / 4) * 4;
-  sun.target.position.set(sx, 0, sz);
-  sun.position.set(sx + SUN_DIR.x * 150, SUN_DIR.y * 150, sz + SUN_DIR.z * 150);
-}
 
 // Подзорная труба: узкий угол зрения, туман отступает — видно далёкие острова и их названия.
 function setSpy(on) {
   spy = on;
   $('spyMask').classList.toggle('hidden', !on);
   $('spyLabel').classList.toggle('hidden', !on);
-  scene.fog.near = on ? 300 : 60;
-  scene.fog.far = on ? 1100 : 170;
   camera.far = on ? 1600 : 500;
   spyName = '';
   resize();
@@ -1464,7 +1394,7 @@ function applyGraphics() {
   const fancy = save.gfx !== 'fast';
   renderer.setPixelRatio(fancy ? Math.min(window.devicePixelRatio || 1, 1.5) : 1);
   renderer.shadowMap.enabled = fancy;
-  sun.castShadow = fancy;
+  sky.sun.castShadow = fancy;
   scene.traverse((o) => {
     if (o.material) o.material.needsUpdate = true; // шейдеры пересоберутся с тенями или без
   });
@@ -1622,6 +1552,7 @@ function musicNow() {
     if (battleMusic) return 'boss';
     if (events.kind === 'ghost') return 'night';
   }
+  if ((mode === 'sea' || mode === 'land') && sky.night > 0.65) return 'night'; // ночью — тихая мелодия
   return MUSIC_FOR[mode] ?? 'none';
 }
 let devFreeze = false; // только для отладки: кадр с осмотра модели не перерисовывается
@@ -1649,11 +1580,16 @@ function frame(now) {
   ship.group.position.z = boat.z;
   ship.group.rotation.y = boat.heading;
   if (mode !== 'wreck') ship.animate(t, mode === 'sea' ? lean : 0);
+  if (mode === 'sea') {
+    // в шторм корабль качает сильнее
+    ship.group.rotation.x += Math.sin(t * 1.3) * 0.06 * (sky.waves - 1);
+    ship.group.rotation.z += Math.sin(t * 0.9) * 0.05 * (sky.waves - 1);
+  }
 
   const onLand = mode === 'land';
   const focusX = onLand ? cap.x : boat.x;
   const focusZ = onLand ? cap.z : boat.z;
-  water.update(t, focusX - Math.sin(camYaw) * 40, focusZ - Math.cos(camYaw) * 40);
+  water.update(t, focusX - Math.sin(camYaw) * 40, focusZ - Math.cos(camYaw) * 40, sky.waves);
   if (spy && mode !== 'sea' && mode !== 'land') setSpy(false);
   terrain.updateVisibility(focusX, focusZ, spy ? 1200 : undefined);
   if (spy) updateSpy(dt, focusX, focusZ);
@@ -1678,12 +1614,8 @@ function frame(now) {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
     fx: focusX, fz: focusZ, groundAt: terrain.groundAt,
   });
-  nature.update(dt, t, { x: cap.x, y: cap.y, z: cap.z, active: mode === 'land', groundAt: terrain.groundAt });
+  nature.update(dt, t, { x: cap.x, y: cap.y, z: cap.z, active: mode === 'land', groundAt: terrain.groundAt, night: sky.night });
   events.update(dt, t, { x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode });
-  if (!spy) {
-    scene.fog.near = 60 - 42 * events.fog;
-    scene.fog.far = 170 - 100 * events.fog;
-  }
   fx.update(dt);
 
   // набрали золота в трюм — новая карта удачи
@@ -1693,7 +1625,7 @@ function frame(now) {
   }
 
   updateCamera(dt);
-  updateSky(focusX, focusZ);
+  sky.update(dt, t, { fx: focusX, fz: focusZ, mode, spy, fogK: events.fog, stormOk: save.found.length >= 2 });
   if (mode !== 'port' && (frameNo++ & 1) === 0) drawMap();
 
   if (toastT > 0) {
@@ -1725,7 +1657,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, sky, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)
@@ -1748,7 +1680,7 @@ if (import.meta.env.DEV) {
       camera.clearViewOffset();
       camera.position.set(...from);
       camera.lookAt(...to);
-      updateSky(to[0], to[2]);
+      sky.place(to[0], to[2]);
       renderer.render(scene, camera);
     },
     // прогнать игру на sec секунд вперёд — работает и в скрытой вкладке, где кадры не идут

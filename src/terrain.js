@@ -347,10 +347,10 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     let z = 0;
     for (let tries = 0; tries < 40; tries++) {
       const ang = Math.PI / 2 + n * 2.39996 + (rng() - 0.5) * 0.4;
-      const d = 125 + 60 * Math.sqrt(n) + rng() * 20 + tries * 10;
+      const d = 150 + 78 * Math.sqrt(n) + rng() * 20 + tries * 12; // между островами — простор
       x = Math.cos(ang) * d;
       z = Math.sin(ang) * d;
-      if (!placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 35)) break;
+      if (!placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 60)) break;
     }
     placed.push({ x, z, r });
     makeIsland(x, z, r, { landmark });

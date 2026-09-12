@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { cube } from './voxel.js';
 
-// Бабочки порхают вокруг капитана, пока он гуляет по острову.
+// Бабочки порхают вокруг капитана, пока он гуляет по острову, а ночью — светлячки.
 const COLORS = [0xf6c944, 0xf07ab8, 0x7ab8f0, 0xffffff, 0xf08a24, 0xb07af0];
 const COUNT = 6;
 
@@ -22,6 +22,14 @@ export function createNature(scene) {
     flies.push({ g, wings, home: null, ph: Math.random() * 6 });
   }
 
+  const fireMat = new THREE.MeshBasicMaterial({ color: 0xe4ff7a });
+  const fireflies = [];
+  for (let i = 0; i < 12; i++) {
+    const m = cube(scene, fireMat, 0.25, 0.25, 0.25);
+    m.visible = false;
+    fireflies.push({ m, ph: Math.random() * 20, r: 3 + Math.random() * 8, h: 0.8 + Math.random() * 2.5 });
+  }
+
   // точка над сушей рядом с капитаном
   function pickHome(p, groundAt) {
     for (let n = 0; n < 8; n++) {
@@ -35,8 +43,16 @@ export function createNature(scene) {
     return null;
   }
 
-  // p: { x, y, z, active, groundAt }
+  // p: { x, y, z, active, groundAt, night }
   function update(dt, t, p) {
+    const glowNow = p.active && (p.night ?? 0) > 0.4;
+    for (const f of fireflies) {
+      f.m.visible = glowNow;
+      if (!glowNow) continue;
+      const s = t * 0.3 + f.ph;
+      f.m.position.set(p.x + Math.cos(s) * f.r, p.y + f.h + Math.sin(s * 2.3) * 0.6, p.z + Math.sin(s * 0.8) * f.r);
+      f.m.scale.setScalar(Math.max(0, Math.sin(t * 3 + f.ph * 5)) * 1.2); // мигают
+    }
     for (const f of flies) {
       if (!p.active) {
         f.g.visible = false;

@@ -689,15 +689,15 @@ h2 {
   opacity: 0.85;
 }
 
+/* компактная карточка слева под счётчиками — не закрывает середину экрана */
 #factCard {
   position: absolute;
-  left: 50%;
-  top: calc(max(12px, env(safe-area-inset-top)) + 168px); /* под мини-картой и полоской команды */
+  left: max(14px, env(safe-area-inset-left));
+  top: calc(max(12px, env(safe-area-inset-top)) + 168px);
   z-index: 6;
-  width: min(440px, 92%);
+  width: min(270px, 48%);
   box-sizing: border-box;
-  padding: 12px 14px 14px;
-  transform: translateX(-50%);
+  padding: 8px 10px 10px;
   cursor: pointer;
   color: #3a2a18;
   background: #f4ecd8;
@@ -710,7 +710,7 @@ h2 {
 }
 
 .fc-top {
-  font: 800 12px system-ui, sans-serif;
+  font: 800 10px system-ui, sans-serif;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: #b8322a;
@@ -718,21 +718,21 @@ h2 {
 
 .fc-name {
   margin-top: 2px;
-  font: 800 22px system-ui, sans-serif;
+  font: 800 16px system-ui, sans-serif;
 }
 
 .fc-country {
-  font: 700 13px system-ui, sans-serif;
+  font: 700 11px system-ui, sans-serif;
   color: #7a5a3a;
 }
 
 .fc-text {
-  margin-top: 6px;
-  font: 600 15px/1.4 system-ui, sans-serif;
+  margin-top: 4px;
+  font: 600 12.5px/1.35 system-ui, sans-serif;
 }
 
 @keyframes card-in {
-  from { transform: translate(-50%, -20px); opacity: 0; }
+  from { transform: translateX(-20px); opacity: 0; }
 }
 
 /* ---------- пауза ---------- */
