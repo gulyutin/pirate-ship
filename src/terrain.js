@@ -177,6 +177,8 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     });
     let landmarkTop = baseY;
     for (let n = from; n < sink.length; n++) landmarkTop = Math.max(landmarkTop, sink[n].y + sink[n].h / 2);
+    island.baseY = baseY;
+    island.top = landmarkTop;
     buildParkour(island, landmarkTop);
   }
 
@@ -385,10 +387,10 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     let z = 0;
     for (let tries = 0; tries < 40; tries++) {
       const ang = Math.PI / 2 + n * 2.39996 + (rng() - 0.5) * 0.4;
-      const d = 150 + 78 * Math.sqrt(n) + rng() * 20 + tries * 12; // между островами — простор
+      const d = 195 + 101 * Math.sqrt(n) + rng() * 26 + tries * 14; // между островами — простор
       x = Math.cos(ang) * d;
       z = Math.sin(ang) * d;
-      if (!placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 60)) break;
+      if (!placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 80)) break;
     }
     placed.push({ x, z, r });
     makeIsland(x, z, r, { landmark });
@@ -401,8 +403,8 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     let bestGap = -Infinity;
     for (let k = 0; k < 72; k++) {
       const ang = (k / 72) * Math.PI * 2;
-      const x = Math.cos(ang) * 1050;
-      const z = Math.sin(ang) * 1050;
+      const x = Math.cos(ang) * 1380;
+      const z = Math.sin(ang) * 1380;
       const gap = Math.min(...placed.map((p) => Math.hypot(p.x - x, p.z - z) - p.r - r));
       if (gap > bestGap) {
         bestGap = gap;

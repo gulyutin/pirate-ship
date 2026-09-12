@@ -30,6 +30,7 @@ const fresh = () => ({
   secretsKnown: [], // секретные острова, о которых узнал
   secretsFound: [], // на которые высадился
   wrecksLooted: [], // затонувшие корабли, где сундук уже поднят
+  played: [], // чудеса, которые уже «оживали»
 });
 
 function read(key) {
@@ -58,7 +59,7 @@ export function loadSave() {
   save.look = { ...fresh().look, ...save.look };
   save.story = { ...fresh().story, ...save.story };
   if (!Array.isArray(save.story.islands)) save.story.islands = [];
-  for (const k of ['found', 'summits', 'quests', 'owned', 'base', 'hired', 'stickers', 'secretsKnown', 'secretsFound', 'wrecksLooted']) if (!Array.isArray(save[k])) save[k] = fresh()[k];
+  for (const k of ['found', 'summits', 'quests', 'owned', 'base', 'hired', 'stickers', 'secretsKnown', 'secretsFound', 'wrecksLooted', 'played']) if (!Array.isArray(save[k])) save[k] = fresh()[k];
   return save;
 }
 

@@ -76,61 +76,71 @@ function stonehenge(a) {
   const BLUE = 0x7f8a94; // голубые камни
   const LICH = 0xa8a070; // лишайник
   const BANK = 0x6aa84f; // травяной вал
+  const DITCH = 0x5a9444;
   const tangent = (ang) => yawAlong(-Math.sin(ang), Math.cos(ang));
-  // земляной вал по кругу, с проходом на юг (к пяточному камню)
-  for (let k = 0; k < 24; k++) {
-    if (k === 18) continue;
-    const ang = (k / 24) * TAU;
-    a.box(Math.cos(ang) * 9, 0, Math.sin(ang) * 9, 2.6, 0.5, 1.0, BANK, tangent(ang));
+  // низкий травяной вал по кругу, проход — к пяточному камню (−z)
+  for (let k = 0; k < 28; k++) {
+    const ang = (k / 28) * TAU;
+    if (Math.abs(ang - 1.5 * Math.PI) < 0.3) continue;
+    a.box(Math.cos(ang) * 10.4, 0, Math.sin(ang) * 10.4, 2.4, 0.35, 0.9, k % 2 ? BANK : DITCH, tangent(ang));
   }
-  // внешнее кольцо сарсенов с перемычками; один камень упал
-  const n = 16;
-  const R = 7.3;
+  // Внешнее кольцо: камни стоят с широкими просветами, двух нет, один упал.
+  // Перемычки лежат только на уцелевшей дальней дуге — как сегодня.
+  const n = 14;
+  const R = 7.6;
+  const MISSING = new Set([6, 13]);
+  const FALLEN = 12;
+  const LINTELS = new Set([1, 2, 3, 4, 8]); // перемычка от камня s к s+1
+  const stands = (s) => !MISSING.has(s % n) && s % n !== FALLEN;
   for (let s = 0; s < n; s++) {
     const ang = (s / n) * TAU;
     const x = Math.cos(ang) * R;
     const z = Math.sin(ang) * R;
     const t = tangent(ang);
-    if (s === 11) {
-      a.box(x * 1.12, 0, z * 1.12, 4.5, 1.2, 1.5, S2, t + 0.5);
-      a.box(x * 1.12, 1.2, z * 1.12, 1.2, 0.08, 0.8, LICH, t + 0.5);
+    if (MISSING.has(s)) continue;
+    if (s === FALLEN) {
+      a.box(x * 1.12, 0, z * 1.12, 1.3, 0.9, 4.6, S2, t + 0.5);
+      a.box(x * 1.12, 0.9, z * 1.12, 0.7, 0.06, 1.6, LICH, t + 0.5);
       continue;
     }
-    a.box(x, 0, z, 1.35, 5.6, 1.1, s % 2 ? S : S2, t); // между камнями — просветы
-    a.box(x + Math.cos(ang) * 0.5, 0.3, z + Math.sin(ang) * 0.5, 0.35, 4.4, 0.2, S2, t); // желобок снаружи
-    a.box(x + Math.cos(ang) * 0.56, 1.2 + (s % 4) * 0.8, z + Math.sin(ang) * 0.56, 0.6, 0.5, 0.08, LICH, t);
+    a.box(x, 0, z, 1.4, 5.2, 1.0, [S, S2, S3][s % 3], t);
+    a.box(x + Math.cos(ang) * 0.51, 1 + (s % 3) * 0.9, z + Math.sin(ang) * 0.51, 0.7, 0.6, 0.06, LICH, t);
     a.solid(x, z, 0.8);
-    if (s < 10 || s > 12) {
+    if (LINTELS.has(s) && stands(s + 1)) {
       const mid = ((s + 0.5) / n) * TAU;
-      a.box(Math.cos(mid) * R, 5.6, Math.sin(mid) * R, 2 * R * Math.sin(Math.PI / n) + 1.3, 0.9, 1.1, s % 2 ? S2 : S3, tangent(mid));
+      a.box(Math.cos(mid) * R, 5.2, Math.sin(mid) * R, 2 * R * Math.sin(Math.PI / n) + 1.3, 0.8, 1.0, s % 2 ? S2 : S3, tangent(mid));
     }
   }
-  // кольцо голубых камней поменьше
-  for (let k = 0; k < 12; k++) {
-    if (k === 3 || k === 8) continue;
-    const ang = (k / 12) * TAU + 0.13;
-    a.box(Math.cos(ang) * 5.3, 0, Math.sin(ang) * 5.3, 0.8, 2 + (k % 3) * 0.3, 0.7, BLUE, tangent(ang));
+  // редкое кольцо голубых камней
+  for (let k = 0; k < 10; k++) {
+    if (k % 3 === 2) continue;
+    const ang = (k / 10) * TAU + 0.3;
+    a.box(Math.cos(ang) * 5.3, 0, Math.sin(ang) * 5.3, 0.6, 1.5 + (k % 2) * 0.5, 0.5, BLUE, tangent(ang));
   }
-  // подкова из пяти трилитов, средний — самый высокий
-  const tri = [[-3, -2.5, 0.9, 6.4], [0, -3.8, 0, 7.6], [3, -2.5, -0.9, 6.4], [-4, 1, 1.4, 5.8], [4, 1, -1.4, 5.8]];
-  for (const [x, z, yaw, h] of tri) {
-    const c = Math.cos(yaw) * 1.1;
-    const sn = Math.sin(yaw) * 1.1;
-    a.box(x - c, 0, z + sn, 1.5, h, 1.3, S, yaw);
-    a.box(x + c, 0, z - sn, 1.5, h, 1.3, S2, yaw);
-    a.box(x - c * 1.02, h * 0.4, z + sn * 1.02, 0.5, 0.6, 1.36, LICH, yaw);
-    a.box(x, h, z, 4, 1.1, 1.4, S3, yaw);
-    a.solid(x, z, 1.5, 1);
+  // подкова трилитов открыта к проходу; самый высокий — напротив. Между столбами — щель.
+  const TRI = [[0, 3.7, 6.8, 'full'], [-3.1, 2.4, 6.0, 'full'], [3.1, 2.4, 6.0, 'bare'], [-3.9, -1.1, 5.4, 'full'], [3.9, -1.1, 5.4, 'fallen']];
+  for (const [x, z, h, st] of TRI) {
+    const ang = Math.atan2(z, x);
+    const t = tangent(ang);
+    const tx = -Math.sin(ang);
+    const tz = Math.cos(ang);
+    for (const sd of [-1, 1]) {
+      a.box(x + tx * sd * 0.95, 0, z + tz * sd * 0.95, 1.2, h, 1.1, sd > 0 ? S : S2, t);
+      a.solid(x + tx * sd * 0.95, z + tz * sd * 0.95, 0.7);
+    }
+    a.box(x + tx * 0.95 + Math.cos(ang) * 0.56, h * 0.45, z + tz * 0.95 + Math.sin(ang) * 0.56, 0.6, 0.5, 0.06, LICH, t);
+    if (st === 'full') a.box(x, h, z, 3.4, 0.9, 1.2, S3, t);
+    if (st === 'fallen') a.box(x * 1.3, 0, z * 1.3 + 0.8, 3.2, 0.8, 1.1, S3, t + 0.4);
   }
-  // внутренняя подкова голубых камней и алтарный камень
-  for (let k = 0; k < 7; k++) {
-    const ang = Math.PI + (k / 6) * Math.PI;
-    a.box(Math.cos(ang) * 2.4, 0, Math.sin(ang) * 2.2 - 0.6, 0.55, 1.6, 0.5, BLUE, tangent(ang));
+  // внутренняя подкова маленьких голубых камней и плоский алтарный камень
+  for (let k = 0; k < 5; k++) {
+    const ang = 0.2 * Math.PI + (k / 4) * 0.6 * Math.PI;
+    a.box(Math.cos(ang) * 2.3, 0, Math.sin(ang) * 2.3 + 0.3, 0.45, 1.3, 0.4, BLUE, tangent(ang));
   }
-  a.box(0, 0, 0.5, 3.4, 0.6, 1.2, 0x6a655c);
-  // пяточный камень в проходе, чуть наклонился
-  a.box(1.2, 0, -8.7, 1.8, 3.6, 1.4, S3, 0.2, 0, 0.12);
-  a.solid(1.2, -8.7, 0.9);
+  a.box(0, 0, 1.0, 2.8, 0.45, 1.0, 0x6a655c);
+  // пяточный камень за валом, чуть наклонился
+  a.box(1.0, 0, -11.4, 1.6, 3.4, 1.3, S3, 0.2, 0, 0.12);
+  a.solid(1.0, -11.4, 0.9);
 }
 
 /* ---------- Мексика: Эль-Кастильо — девять террас с рельефами, лестницы-змеи, храм на вершине ---------- */

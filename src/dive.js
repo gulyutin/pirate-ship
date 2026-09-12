@@ -15,7 +15,7 @@ const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 function wreckSites(islands) {
   const sites = [];
   for (let i = 0; i < 6; i++) {
-    const R = 300 + i * 120;
+    const R = 390 + i * 156;
     let best = null;
     let bestGap = -Infinity;
     for (let k = 0; k < 48; k++) {

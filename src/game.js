@@ -22,7 +22,8 @@ import { createPet } from './pets.js';
 import { createAnimals, renderAlbum, STICKERS } from './animals.js';
 import { createDive, makeHelmet, SEABED } from './dive.js';
 import { createBase, BLOCKS } from './base.js';
-import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
+import { createWonders } from './wonders.js';
+import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain, nationalTrack } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
 import { loadSave, storeSave, resetSave } from './save.js';
@@ -416,6 +417,9 @@ function renderBuildBar() {
 }
 renderBuildBar();
 buildBar.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+// Ожившие чудеса: подошёл к чуду — кнопка: куранты, салют, тайный ход…
+const wonders = createWonders(scene, terrain, { fx, sfx, say, camera, gold: (n) => addGold(n), save, store: () => storeSave(save) });
 
 // Новая наклейка в альбом: звери на островах, дельфины и кит, чудища из легенды.
 function addSticker(id) {
@@ -1460,7 +1464,8 @@ function updateLand(dt, mv) {
   }
 
   buildOn = !digSpot && base.onHome(cap.x, cap.z);
-  setAction(digSpot && digT <= 0 ? 'dig' : buildOn ? 'build' : null);
+  const wonder = !digSpot && !buildOn && wonders.near(cap);
+  setAction(digSpot && digT <= 0 ? 'dig' : wonder ? 'wonder' : buildOn ? 'build' : null);
 }
 
 function updatePort(dt) {
@@ -1552,7 +1557,8 @@ function updateActors(dt, fxX, fxZ) {
         p.y = u.home;
         u.gone = false;
       }
-    } else if (dist(p.x, p.z, fxX, fxZ) < 80) {
+    } else if (u.go || (mode === 'sea' && dist(p.x, p.z, fxX, fxZ) < 80)) {
+      u.go = false;
       u.flying = true;
       u.v = 0;
       sfx.launch();
@@ -1731,6 +1737,7 @@ const ACTIONS = {
   dive: ['🤿 Нырнуть', () => startDive()],
   surface: ['🫧 Всплыть', () => endDive()],
   build: ['🧱 Поставить', () => base.place(cap)],
+  wonder: ['✨', () => wonders.run()],
 };
 
 // Когда кнопка появляется впервые, голос объясняет, что нажать.
@@ -1746,7 +1753,7 @@ function setAction(name) {
   if (name === action) return;
   action = name;
   actBtn.classList.toggle('hidden', !name);
-  if (name) actBtn.textContent = ACTIONS[name][0];
+  if (name) actBtn.textContent = name === 'wonder' ? wonders.label() : ACTIONS[name][0];
   if (name && ACTION_TIPS[name] && !tipped.has(name)) {
     tipped.add(name);
     showHint(ACTION_TIPS[name]);
@@ -2033,6 +2040,11 @@ function musicNow() {
     if (battleMusic) return 'boss';
     if (events.kind === 'ghost') return 'night';
   }
+  // у чуда света — его национальная мелодия
+  if (mode === 'sea' || mode === 'land') {
+    const f = mode === 'land' ? cap : boat;
+    for (const isl of WONDERS) if (dist(isl.x, isl.z, f.x, f.z) < isl.r + 40) return nationalTrack(isl.landmark.country) ?? MUSIC_FOR[mode];
+  }
   if ((mode === 'sea' || mode === 'land') && sky.night > 0.65) return 'night'; // ночью — тихая мелодия
   return MUSIC_FOR[mode] ?? 'none';
 }
@@ -2096,6 +2108,7 @@ function frame(now) {
   pet.update(dt, t);
   animals.update(dt, t, { mode, cap, fx: focusX, fz: focusZ });
   updateActors(dt, focusX, focusZ);
+  wonders.update(dt);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
     fx: focusX, fz: focusZ, groundAt: terrain.groundAt,
@@ -2151,7 +2164,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, pet, animals, deep, base, sky, story, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, gunner, roles, pet, animals, deep, base, wonders, musicNow, sky, story, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)

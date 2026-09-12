@@ -4,11 +4,11 @@ import { TRIALS } from './trials.js';
 // испытание. Ключи добываются по порядку — так всегда понятно, куда плыть дальше.
 // Собрал все пять — открывается логово Кракена.
 export const CHAPTERS = [
-  { region: 'russia', key: 'Ключ России', trial: 'firebird', icon: '🔥', dist: 230, intro: 'Жар-птица носит Ключ России. Догони её три раза!' },
-  { region: 'americas', key: 'Ключ Америки', trial: 'race', icon: '🏁', dist: 380, intro: 'Проплыви через все 8 колец вокруг острова, пока не кончилось время!' },
-  { region: 'africa', key: 'Ключ Африки', trial: 'scarabs', icon: '🪲', dist: 520, intro: 'Высадись на остров и найди шесть золотых скарабеев!' },
-  { region: 'asia', key: 'Ключ Азии', trial: 'serpent', icon: '🐉', dist: 660, intro: 'Морской змей стережёт Ключ Азии. Стреляй, когда он выныривает!' },
-  { region: 'europe', key: 'Ключ Европы', trial: 'blackbeard', icon: '🏴‍☠️', dist: 800, intro: 'Флагман Чёрной Бороды! Потопи его, чтобы забрать Ключ Европы.' },
+  { region: 'russia', key: 'Ключ России', trial: 'firebird', icon: '🔥', dist: 300, intro: 'Жар-птица носит Ключ России. Догони её три раза!' },
+  { region: 'americas', key: 'Ключ Америки', trial: 'race', icon: '🏁', dist: 495, intro: 'Проплыви через все 8 колец вокруг острова, пока не кончилось время!' },
+  { region: 'africa', key: 'Ключ Африки', trial: 'scarabs', icon: '🪲', dist: 675, intro: 'Высадись на остров и найди шесть золотых скарабеев!' },
+  { region: 'asia', key: 'Ключ Азии', trial: 'serpent', icon: '🐉', dist: 860, intro: 'Морской змей стережёт Ключ Азии. Стреляй, когда он выныривает!' },
+  { region: 'europe', key: 'Ключ Европы', trial: 'blackbeard', icon: '🏴‍☠️', dist: 1040, intro: 'Флагман Чёрной Бороды! Потопи его, чтобы забрать Ключ Европы.' },
 ];
 export const LEGEND =
   'Давным-давно Золотой Кракен утащил на дно самый большой клад на свете. ' +
@@ -26,12 +26,14 @@ export function createStory(save, hooks) {
   // острова для ключей: нужная часть света, примерно на нужном расстоянии от порта
   function ensure() {
     // логово Кракена — в открытом море, подальше от островов
-    if (!save.story.lair) {
+    // (острова могли раздвинуться — если логово оказалось у берега, ищем новое место)
+    const cramped = (p) => hooks.islands.some((i) => Math.hypot(i.x - p.x, i.z - p.z) < i.r + 60);
+    if (!save.story.lair || (!save.story.kraken && cramped(save.story.lair))) {
       let best = null;
       let bestScore = -1;
       for (let k = 0; k < 64; k++) {
         const a = (k / 64) * Math.PI * 2;
-        const p = { x: Math.cos(a) * 880, z: Math.sin(a) * 880 };
+        const p = { x: Math.cos(a) * 1150, z: Math.sin(a) * 1150 };
         const score = Math.min(...hooks.islands.map((i) => Math.hypot(i.x - p.x, i.z - p.z) - i.r));
         if (score > bestScore) {
           bestScore = score;
