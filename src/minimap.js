@@ -49,6 +49,7 @@ export function drawWorldMap(canvas, v) {
     ctx.fillText(glyph, mx, my + 1);
   };
   mark(v.islands.find((i) => i.port), '⚓', '#4a3120');
+  mark(v.islands.find((i) => i.home), '🏠', '#e8793a');
   mark(v.islands.find((i) => i.id === v.bigTreasure), '✕', '#c0392b');
   mark(v.islands.find((i) => i.id === v.questTarget), '!', '#d4a020');
   if (v.storyTarget) {
@@ -125,7 +126,7 @@ export function createMinimap(canvas) {
     let mysteryD = Infinity;
     for (const isl of v.islands) {
       if (isl.port) port = isl;
-      const known = isl.port || v.found.includes(isl.id);
+      const known = isl.port || isl.home || v.found.includes(isl.id);
       if (!known) {
         const d = Math.hypot(isl.x - v.x, isl.z - v.z);
         if (d < mysteryD) {
@@ -138,7 +139,7 @@ export function createMinimap(canvas) {
       const rr = Math.max(3, isl.r * K * 1.1);
       ctx.fillStyle = '#e3d38f';
       ctx.fillRect(mx - rr, my - rr, rr * 2, rr * 2);
-      ctx.fillStyle = isl.port ? '#b58a58' : '#5fa044';
+      ctx.fillStyle = isl.port ? '#b58a58' : isl.home ? '#e8793a' : '#5fa044';
       ctx.fillRect(mx - rr * 0.7, my - rr * 0.7, rr * 1.4, rr * 1.4);
     }
 

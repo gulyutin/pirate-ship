@@ -198,6 +198,10 @@ const beachFor = (isl) => (isl.landmark?.theme === 'snow' ? null : ['crab', 'tur
 const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 
 // hooks: has(id), add(id)
+// звери, которые могут жить на своём острове (сухопутные из альбома)
+const ZOO = Object.keys(BUILD);
+
+// hooks.blocked(x, z, y) — блок своей базы: сквозь него звери не ходят
 export function createAnimals(scene, terrain, hooks) {
   const herds = terrain.islands.filter((i) => !i.port && i.cells.length).map((isl) => ({ isl, live: false, list: [] }));
   let scanT = 0;
@@ -207,7 +211,10 @@ export function createAnimals(scene, terrain, hooks) {
     const kinds = [];
     const main = speciesFor(h.isl);
     if (main) for (let n = 0; n < 3; n++) kinds.push(main);
-    const beach = beachFor(h.isl);
+    // на своём острове гуляют все звери, которых уже нашёл
+    h.zoo = h.isl.home ? ZOO.filter(hooks.has) : [];
+    kinds.push(...h.zoo);
+    const beach = h.isl.home ? null : beachFor(h.isl);
     if (beach) for (let n = 0; n < 2; n++) kinds.push(beach);
     for (const kind of kinds) {
       const cell = pickCell(h.isl, kind);
@@ -235,7 +242,7 @@ export function createAnimals(scene, terrain, hooks) {
     for (let n = 0; n < 10; n++) {
       const c = list[Math.floor(Math.random() * list.length)];
       const p = terrain.cellPos(c);
-      if (!terrain.isSolid(p.x, p.z)) return c;
+      if (!terrain.isSolid(p.x, p.z) && !hooks.blocked?.(p.x, p.z, p.y)) return c;
     }
     return null;
   }
@@ -265,7 +272,7 @@ export function createAnimals(scene, terrain, hooks) {
     const nx = g.position.x + (dx / d) * step;
     const nz = g.position.z + (dz / d) * step;
     const y = terrain.groundAt(nx, nz);
-    if (y === undefined || terrain.isSolid(nx, nz)) {
+    if (y === undefined || terrain.isSolid(nx, nz) || hooks.blocked?.(nx, nz, y)) {
       a.target = null;
       a.wait = 0.5;
       return;
@@ -284,6 +291,10 @@ export function createAnimals(scene, terrain, hooks) {
         const d = dist(h.isl.x, h.isl.z, s.fx, s.fz);
         if (!h.live && d < 190) spawn(h);
         else if (h.live && d > 260) despawn(h);
+        else if (h.live && h.isl.home && ZOO.filter(hooks.has).length !== h.zoo.length) {
+          despawn(h); // новый зверь в альбоме — переселяется к тебе на остров
+          spawn(h);
+        }
       }
     }
     for (const h of herds) {

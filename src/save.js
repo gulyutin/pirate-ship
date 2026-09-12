@@ -69,6 +69,7 @@ export function resetSave(old) {
     muted: old.muted,
     gfx: old.gfx,
     runs: (old.runs || 0) + 1,
+    base: old.base ?? [], // свою стройку не ломаем
     seed: 1 + Math.floor(Math.random() * 2 ** 30),
   };
 }

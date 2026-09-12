@@ -15,6 +15,7 @@ const SEED = 20260911;
 
 export const PORT = { x: 0, z: 0, r: 24 };
 export const DOCK = { x: 9, z: 36, heading: Math.PI }; // стоянка у причала, носом в море
+export const HOME = { x: -100, z: -34, r: 20 }; // свой остров — недалеко от порта
 
 const TOP = { sand: 0xe3d38f, grass: 0x5fa044, stone: 0x8a8f94 };
 const BODY = { sand: 0xd4bf78, grass: 0x8b5a2b, stone: 0x6f7479, plaza: 0x9a9282 };
@@ -179,16 +180,16 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     buildParkour(island, landmarkTop);
   }
 
-  function makeIsland(cx, cz, r, { port = false, landmark = null, name = '' } = {}) {
+  function makeIsland(cx, cz, r, { port = false, home = false, landmark = null, name = '' } = {}) {
     const p1 = rng() * 6.28;
     const p2 = rng() * 6.28;
     const p3 = rng() * 6.28;
-    const wob = port ? 0 : 0.5; // порт — ровный круг, остальные с изрезанным берегом
-    const maxH = port ? 1 : 3 + (r > 26 ? 1 : 0);
+    const wob = port || home ? 0 : 0.5; // порт и свой остров — ровный круг, остальные с изрезанным берегом
+    const maxH = port || home ? 1 : 3 + (r > 26 ? 1 : 0);
     const plateau = landmark ? landmark.size + 3 : 0;
     const island = {
       id: islands.length, name: landmark?.name ?? name, country: landmark?.country ?? '',
-      x: cx, z: cz, r, port, landmark, cells: [], blocks: [], secret: !!landmark?.secret,
+      x: cx, z: cz, r, port, home, landmark, cells: [], blocks: [], secret: !!landmark?.secret,
     };
     islands.push(island);
     sink = island.blocks;
@@ -216,6 +217,10 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     }
 
     if (port) return island;
+    if (home) {
+      buildHome(island);
+      return island;
+    }
 
     buildLandmark(island);
     plazaProps(island, plateau);
@@ -297,6 +302,25 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     }
   }
 
+  // Свой остров: ровная лужайка под стройку, флагшток с пиратским флагом и пара пальм.
+  function buildHome(island) {
+    const { x: cx, z: cz } = island;
+    const fx = cellCenter(cellOf(cx - 10));
+    const fz = cellCenter(cellOf(cz + 8));
+    const fy = top.get(key(cellOf(fx), cellOf(fz)));
+    block(fx, fy + 3.5, fz, 0.35, 7, 0.35, 0x8a8a8a);
+    block(fx + 1.4, fy + 6.2, fz, 2.4, 1.6, 0.12, 0x1a1a1a);
+    block(fx + 1.4, fy + 6.35, fz, 0.7, 0.6, 0.16, 0xf4f1e8);
+    block(fx + 1.4, fy + 5.9, fz, 0.5, 0.2, 0.16, 0xf4f1e8);
+    markSolid(fx, fz, 0.3);
+    for (const [x, z] of [[13, 9], [-14, -5], [9, -14]]) {
+      const i = cellOf(cx + x);
+      const k = cellOf(cz + z);
+      palm(i, k, top.get(key(i, k)));
+    }
+    decorate(island.cells, 0);
+  }
+
   function buildPort() {
     makeIsland(PORT.x, PORT.z, PORT.r, { port: true, name: 'Порт' });
 
@@ -354,7 +378,7 @@ export function createTerrain(scene, surfaces, seed = SEED) {
 
   // Острова «подсолнухом» вокруг порта: равномерно по кругу, первый — прямо по курсу.
   // Расстояние растёт как корень из номера — так острова не редеют к краю мира.
-  const placed = [{ x: PORT.x, z: PORT.z, r: PORT.r + 30 }];
+  const placed = [{ x: PORT.x, z: PORT.z, r: PORT.r + 30 }, { x: HOME.x, z: HOME.z, r: HOME.r + 10 }];
   landmarkOrder(seed).forEach((landmark, n) => {
     const r = landmark.size + 10 + rng() * 5;
     let x = 0;
@@ -388,6 +412,9 @@ export function createTerrain(scene, surfaces, seed = SEED) {
     placed.push({ x: best.x, z: best.z, r });
     makeIsland(best.x, best.z, r, { landmark });
   }
+
+  // свой остров строим последним: номера островов с чудесами не сдвигаются
+  makeIsland(HOME.x, HOME.z, HOME.r, { home: true, name: 'Мой остров' });
 
   // монеты и крестики — только там, где можно стоять
   for (const isl of islands) isl.cells = isl.cells.filter((c) => !solid.has(key(c.i, c.k)));
