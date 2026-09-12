@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#8ec7e8" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23b8901f'/%3E%3Crect width='12' height='12' fill='%23f6c944'/%3E%3C/svg%3E" />
+    <title>Корабль</title>
+  </head>
+  <body>
+    <div id="wrap">
+      <div id="stage"></div>
+
+      <div id="hud" class="hidden">
+        <div class="hud-left">
+          <button class="icon-btn" id="pauseBtn" aria-label="Пауза">⏸</button>
+          <button class="icon-btn" id="spyBtn" aria-label="Подзорная труба">🔭</button>
+          <div>
+            <div class="hud-gold"><span class="cube"></span><span id="goldNum">0</span><small class="hold">в трюме</small></div>
+            <div class="hud-isles">🗼 <span id="isleNum">0/20</span></div>
+            <div class="hud-isles hidden" id="mapRow">🗺 <span id="mapNum"></span></div>
+            <div class="hud-cards" id="hudCards"></div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <canvas id="minimap"></canvas>
+          <div class="hud-crew" id="crewPips"></div>
+        </div>
+      </div>
+
+      <div id="joy" class="hidden"><div id="joyKnob"></div></div>
+      <button id="actBtn" class="hidden"></button>
+      <button id="jumpBtn" class="hidden" aria-label="Прыжок">⤒</button>
+      <button id="boardBtn" class="hidden">⛵ На корабль</button>
+
+      <div id="toast"></div>
+      <div id="spyMask" class="hidden"></div>
+      <div id="spyLabel" class="hidden"></div>
+
+      <div id="hint" class="hidden">
+        <span class="finger">👆</span>
+        <span id="hintText"></span>
+      </div>
+
+      <div class="screen port" id="scPort">
+        <div class="panel">
+          <div class="port-head">
+            <div>
+              <h1>Корабль</h1>
+              <p class="sub">первого класса</p>
+            </div>
+            <div class="head-btns">
+              <button class="icon-btn" id="portPassBtn" aria-label="Паспорт">📘</button>
+              <button class="icon-btn" id="muteBtn" aria-label="Звук">🔊</button>
+            </div>
+          </div>
+          <div class="bank"><span class="cube big"></span><span id="bank">0</span></div>
+          <p class="last" id="portStats"></p>
+          <p class="last" id="balbesLine"></p>
+          <p class="last" id="fairyLine"></p>
+          <div class="quests" id="questList"></div>
+          <div class="shop" id="shop"></div>
+          <div class="flag-row"><span>🏴 Флаг</span><div class="swatches" id="flagColors"></div></div>
+          <button class="btn primary" id="goBtn">В море!</button>
+          <button class="btn small" id="portRestart">🔄 Начать заново</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scPause">
+        <div class="panel">
+          <h2>Пауза</h2>
+          <canvas id="worldMap" aria-label="Карта мира"></canvas>
+          <div class="quests" id="pauseQuests"></div>
+          <button class="btn primary" id="resumeBtn">▶ Продолжить</button>
+          <button class="btn" id="homeBtn">⚓ В порт</button>
+          <button class="btn" id="pauseMute">🔊 Звук</button>
+          <button class="btn" id="gfxBtn">✨ Графика: красивая</button>
+          <button class="btn" id="passBtn">📘 Паспорт путешественника</button>
+          <button class="btn" id="restartBtn">🔄 Начать заново</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scCards">
+        <div class="panel cards-panel">
+          <h2 id="cardsTitle">Карта удачи</h2>
+          <p class="last" id="cardsSub"></p>
+          <div class="lcards" id="cardsRow"></div>
+          <button class="btn hidden" id="cardsSkip">Не надо, спасибо</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scRestart">
+        <div class="panel">
+          <h2>Начать заново?</h2>
+          <p class="lede">Золото, улучшения и паспорт начнутся с нуля, а острова с чудесами света встанут по-новому. Будет новый мир!</p>
+          <button class="btn primary" id="restartYes">🔄 Да, новый мир!</button>
+          <button class="btn" id="restartNo">Нет, играю дальше</button>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="scPassport">
+        <div class="panel passport">
+          <div class="port-head">
+            <h2>📘 Паспорт</h2>
+            <button class="icon-btn" id="passClose" aria-label="Закрыть">✕</button>
+          </div>
+          <p class="last" id="passCount"></p>
+          <div class="stamps" id="stamps"></div>
+        </div>
+      </div>
+
+      <div id="factCard" class="hidden">
+        <div class="fc-top" id="fcTop"></div>
+        <div class="fc-name" id="fcName"></div>
+        <div class="fc-country" id="fcCountry"></div>
+        <div class="fc-text" id="fcText"></div>
+      </div>
+
+      <div class="screen hidden" id="scErr">
+        <div class="panel">
+          <h2>Море не загрузилось</h2>
+          <p class="lede">Браузер не дал включить 3D (WebGL). Попробуй другой браузер или обнови страницу.</p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/game.js"></script>
+  </body>
+</html>

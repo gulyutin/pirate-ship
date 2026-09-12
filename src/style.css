@@ -1,0 +1,979 @@
+:root {
+  --gold: #f6c944;
+  --gold-dk: #b8901f;
+  --wood: #7a5230;
+  --wood-dk: #4a3120;
+  --wood-lt: #9c6d44;
+  --stone: #7d8286;
+  --stone-dk: #4e5356;
+  --stone-lt: #a3a8ab;
+  --ink: #22201c;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #8ec7e8;
+}
+
+#wrap {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #8ec7e8;
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* Рендерим в разрешении 1:1 с CSS-пикселем и растягиваем «ступеньками» — как в Minecraft. */
+#stage canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- экраны ---------- */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 28, 36, 0.55);
+}
+
+.panel {
+  width: min(390px, 100%);
+  max-height: 92%;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 22px 20px 18px;
+  text-align: center;
+  background: var(--stone);
+  border-top: 5px solid var(--stone-lt);
+  border-left: 5px solid var(--stone-lt);
+  border-right: 5px solid var(--stone-dk);
+  border-bottom: 5px solid var(--stone-dk);
+  box-shadow: 0 0 0 4px #2e3234;
+}
+
+h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #f4f1e8;
+  text-shadow: 3px 3px 0 #3c4043;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #f4f1e8;
+  text-shadow: 3px 3px 0 #3c4043;
+}
+
+.sub {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e7e2d6;
+  text-shadow: 2px 2px 0 #3c4043;
+}
+
+.lede {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #f1ede2;
+  text-shadow: 1px 1px 0 #4a4f52;
+}
+
+/* ---------- порт: панель снизу (телефон) или справа (широкий экран), корабль виден ---------- */
+.screen.port {
+  align-items: flex-end;
+  padding: 0;
+  background: none;
+  pointer-events: none;
+}
+
+.screen.port .panel {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 560px;
+  max-height: 62%;
+  padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+}
+
+@media (min-aspect-ratio: 1/1) {
+  .screen.port {
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px;
+  }
+
+  .screen.port .panel {
+    width: 360px;
+    max-height: 100%;
+  }
+
+  .shop {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+.port-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.icon-btn {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 22px;
+  cursor: pointer;
+  background: var(--wood);
+  border-top: 4px solid var(--wood-lt);
+  border-left: 4px solid var(--wood-lt);
+  border-right: 4px solid var(--wood-dk);
+  border-bottom: 4px solid var(--wood-dk);
+}
+
+.bank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px 0 2px;
+  font: 800 34px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.last {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #eae5d8;
+  text-shadow: 1px 1px 0 #4a4f52;
+}
+
+/* ---------- карточки улучшений ---------- */
+.shop {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.up {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 3px 6px;
+  cursor: pointer;
+  font: 700 13px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 1px 1px 0 #3a3f42;
+  background: #5f6569;
+  border-top: 4px solid #868c90;
+  border-left: 4px solid #868c90;
+  border-right: 4px solid #3f4447;
+  border-bottom: 4px solid #3f4447;
+}
+
+.up.can {
+  background: #3f8f4a;
+  border-top-color: #63b46d;
+  border-left-color: #63b46d;
+  border-right-color: #2a6632;
+  border-bottom-color: #2a6632;
+}
+
+.up:active {
+  transform: translateY(2px);
+}
+
+.up-icon {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.up-hint {
+  min-height: 2.5em;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.9;
+}
+
+.up-lvl {
+  display: flex;
+  gap: 3px;
+}
+
+.up-lvl i {
+  width: 10px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.up-lvl i.on {
+  background: var(--gold);
+  box-shadow: inset -2px -2px 0 var(--gold-dk);
+}
+
+.up-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+}
+
+.up-price .cube {
+  width: 12px;
+  height: 12px;
+  box-shadow: inset -3px -3px 0 var(--gold-dk);
+}
+
+.up.cant .up-price {
+  color: #ffc2b8;
+}
+
+.up.max .up-price {
+  color: var(--gold);
+}
+
+.up.shake {
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* ---------- кнопки-блоки ---------- */
+.btn {
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 14px;
+  cursor: pointer;
+  font: 700 17px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 2px 2px 0 #3a3f42;
+  background: var(--wood);
+  border-top: 4px solid var(--wood-lt);
+  border-left: 4px solid var(--wood-lt);
+  border-right: 4px solid var(--wood-dk);
+  border-bottom: 4px solid var(--wood-dk);
+}
+
+.btn.primary {
+  padding: 16px;
+  font-size: 20px;
+  background: #3f8f4a;
+  border-top-color: #63b46d;
+  border-left-color: #63b46d;
+  border-right-color: #2a6632;
+  border-bottom-color: #2a6632;
+}
+
+.btn.primary:active {
+  border-top-color: #2a6632;
+  border-left-color: #2a6632;
+  border-right-color: #63b46d;
+  border-bottom-color: #63b46d;
+}
+
+.btn:focus-visible,
+.up:focus-visible,
+.icon-btn:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+  pointer-events: none;
+}
+
+.hud-gold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 800 24px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hud-dist {
+  margin-top: 2px;
+  font: 800 16px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.cube {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  background: var(--gold);
+  box-shadow: inset -4px -4px 0 var(--gold-dk);
+}
+
+.cube.big {
+  width: 26px;
+  height: 26px;
+  box-shadow: inset -5px -5px 0 var(--gold-dk);
+}
+
+.hud-crew {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 52%;
+}
+
+.pip {
+  width: 14px;
+  height: 14px;
+  background: #e8e3d6;
+  box-shadow: inset -3px -3px 0 #9a9588;
+}
+
+.pip.out {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.pip.shield {
+  background: #9cc3ec;
+  box-shadow: inset -3px -3px 0 #557fae;
+}
+
+#toast {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  padding: 0 20px;
+  text-align: center;
+  font: 800 26px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+#toast.on {
+  opacity: 1;
+}
+
+/* подсказка в первых заплывах */
+#hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font: 800 22px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.finger {
+  font-size: 44px;
+  animation: sway 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes sway {
+  from { transform: translateX(-50px); }
+  to { transform: translateX(50px); }
+}
+
+/* ---------- HUD открытого мира ---------- */
+.hud-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.hud-left .icon-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+.hud-isles {
+  margin-top: 2px;
+  font: 800 16px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+#minimap {
+  width: 120px;
+  height: 120px;
+  border: 4px solid #4e5356;
+  box-shadow: 0 0 0 2px #a3a8ab;
+  image-rendering: pixelated;
+}
+
+/* джойстик: квадратный, как всё в этом мире */
+#joy {
+  position: absolute;
+  z-index: 2;
+  width: 110px;
+  height: 110px;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.16);
+  border: 4px solid rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+#joyKnob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset -5px -5px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* большая кнопка действия: на берег / на корабль / копать */
+#actBtn {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 3;
+  padding: 18px 22px;
+  cursor: pointer;
+  font: 800 21px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 2px 2px 0 #2a4a2e;
+  background: #3f8f4a;
+  border-top: 5px solid #63b46d;
+  border-left: 5px solid #63b46d;
+  border-right: 5px solid #2a6632;
+  border-bottom: 5px solid #2a6632;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+#actBtn:active {
+  transform: translateY(3px);
+}
+
+/* на суше справа внизу — прыжок, а действие («Копать») поднимается над ним */
+#wrap.on-land #actBtn {
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 104px);
+}
+
+#jumpBtn {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 3;
+  width: 88px;
+  height: 88px;
+  cursor: pointer;
+  font: 800 38px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  background: rgba(40, 48, 56, 0.5);
+  border: 4px solid rgba(255, 255, 255, 0.65);
+  touch-action: none;
+}
+
+#jumpBtn:active {
+  background: rgba(40, 48, 56, 0.75);
+}
+
+/* «На корабль» — всегда на виду, пока капитан на острове */
+#boardBtn {
+  position: absolute;
+  left: 14px;
+  top: calc(max(12px, env(safe-area-inset-top)) + 62px);
+  z-index: 3;
+  padding: 10px 14px;
+  cursor: pointer;
+  font: 800 16px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 2px 2px 0 #3a3f42;
+  background: var(--wood);
+  border-top: 4px solid var(--wood-lt);
+  border-left: 4px solid var(--wood-lt);
+  border-right: 4px solid var(--wood-dk);
+  border-bottom: 4px solid var(--wood-dk);
+}
+
+#boardBtn:active {
+  transform: translateY(2px);
+}
+
+@keyframes pulse {
+  50% { filter: brightness(1.15); }
+}
+
+#hintText {
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* ---------- задания капитана порта ---------- */
+.quests {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+  text-align: left;
+}
+
+.quest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font: 700 13px system-ui, sans-serif;
+  color: #3a2a18;
+  background: #f4ecd8;
+  box-shadow: inset -3px -3px 0 #c9b58a;
+}
+
+.quest b {
+  margin-left: auto;
+  white-space: nowrap;
+  color: #7a5a3a;
+}
+
+/* ---------- подзорная труба и карта мира ---------- */
+#spyMask {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)) center 45% / 2px 30px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)) center 45% / 30px 2px no-repeat,
+    radial-gradient(circle at 50% 45%, transparent 0 34vmin, rgba(10, 14, 20, 0.92) 36vmin);
+}
+
+#spyLabel {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  z-index: 2;
+  padding: 6px 14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font: 800 20px system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  background: rgba(20, 24, 28, 0.6);
+  pointer-events: none;
+}
+
+#worldMap {
+  display: block;
+  width: min(280px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto 4px;
+  border: 4px solid #4e5356;
+  box-shadow: 0 0 0 2px #a3a8ab;
+}
+
+/* ---------- паспорт путешественника и карточка факта ---------- */
+.head-btns {
+  display: flex;
+  gap: 6px;
+}
+
+#scPassport {
+  z-index: 5;
+}
+
+#scPassport .panel {
+  width: min(560px, 100%);
+  max-height: 90%;
+}
+
+.stamps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 84px;
+  padding: 6px 4px;
+  font: 800 22px system-ui, sans-serif;
+  color: #9aa0a4;
+  background: rgba(0, 0, 0, 0.18);
+  border: 3px dashed #6a6f74;
+}
+
+.stamp.found {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--c);
+  background: #f4ecd8;
+  border: 3px dashed var(--c);
+  transform: rotate(-3deg);
+}
+
+.stamp.found:nth-child(even) {
+  transform: rotate(2.5deg);
+}
+
+.stamp.found small {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+#factCard {
+  position: absolute;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 168px); /* под мини-картой и полоской команды */
+  z-index: 6;
+  width: min(440px, 92%);
+  box-sizing: border-box;
+  padding: 12px 14px 14px;
+  transform: translateX(-50%);
+  cursor: pointer;
+  color: #3a2a18;
+  background: #f4ecd8;
+  border-top: 4px solid #fff8e6;
+  border-left: 4px solid #fff8e6;
+  border-right: 4px solid #c9b58a;
+  border-bottom: 4px solid #c9b58a;
+  box-shadow: 0 0 0 3px #6a4a2e;
+  animation: card-in 0.35s ease-out;
+}
+
+.fc-top {
+  font: 800 12px system-ui, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #b8322a;
+}
+
+.fc-name {
+  margin-top: 2px;
+  font: 800 22px system-ui, sans-serif;
+}
+
+.fc-country {
+  font: 700 13px system-ui, sans-serif;
+  color: #7a5a3a;
+}
+
+.fc-text {
+  margin-top: 6px;
+  font: 600 15px/1.4 system-ui, sans-serif;
+}
+
+@keyframes card-in {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+}
+
+/* ---------- пауза ---------- */
+#scPause .panel {
+  max-height: 88%;
+}
+
+#scPause .btn {
+  margin-top: 8px;
+}
+
+h3 {
+  margin: 16px 0 8px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #f4f1e8;
+  text-shadow: 2px 2px 0 #3c4043;
+}
+
+/* ---------- трюм и карты удачи ---------- */
+.hud-gold .hold {
+  align-self: flex-end;
+  margin-bottom: 3px;
+  font: 700 12px system-ui, sans-serif;
+  opacity: 0.9;
+}
+
+.hud-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 150px;
+  margin-top: 4px;
+}
+
+.hcard {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 34px;
+  font-size: 16px;
+  background: #7a3fb0;
+  border: 2px solid var(--gold);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.hcard b {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  padding: 0 2px;
+  font: 800 10px system-ui, sans-serif;
+  color: #3a2a18;
+  background: var(--gold);
+}
+
+#scCards {
+  z-index: 5;
+}
+
+#scRestart {
+  z-index: 7;
+}
+
+/* ---------- цвет флага ---------- */
+.flag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font: 800 14px system-ui, sans-serif;
+  color: #f4f1e8;
+  text-shadow: 1px 1px 0 #3a3f42;
+}
+
+.flag-row > span {
+  white-space: nowrap;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  border: 3px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.swatch.on {
+  border-color: #fff;
+  outline: 3px solid var(--gold);
+}
+
+.btn.small {
+  padding: 8px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.cards-panel {
+  width: min(520px, 100%) !important;
+}
+
+.lcards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 190px;
+  padding: 14px 6px 10px;
+  cursor: pointer;
+  color: #f4ecd8;
+  text-shadow: 1px 1px 0 #3a1a5a;
+  background: linear-gradient(#8a4fc0, #5a2a8a);
+  border: 4px solid var(--gold);
+  box-shadow: inset 0 0 0 3px #3a1a5a, 4px 4px 0 rgba(0, 0, 0, 0.35);
+  animation: deal 0.35s ease-out backwards;
+}
+
+.lcard:hover,
+.lcard:focus-visible {
+  transform: translateY(-4px);
+  outline: none;
+}
+
+.lcard:active {
+  transform: translateY(2px);
+}
+
+.lc-key {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font: 800 11px system-ui, sans-serif;
+  opacity: 0.6;
+}
+
+.lc-icon {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.lc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lc-name {
+  font: 800 15px/1.15 system-ui, sans-serif;
+  color: var(--gold);
+}
+
+.lc-text {
+  font: 600 12px/1.3 system-ui, sans-serif;
+}
+
+/* узкий экран: карты — полосками одна под другой, текст не ломается */
+@media (max-width: 640px) {
+  .lcards {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .lcard {
+    flex-direction: row;
+    gap: 12px;
+    min-height: 0;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .lc-body {
+    flex: 1;
+    gap: 2px;
+  }
+
+  .lc-icon {
+    font-size: 34px;
+  }
+
+  .lc-name {
+    font-size: 17px;
+  }
+
+  .lc-text {
+    font-size: 13px;
+  }
+
+  .lc-price {
+    margin-top: 0;
+  }
+
+  .lc-key {
+    top: 2px;
+    left: 4px;
+  }
+}
+
+.lc-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  font: 800 16px system-ui, sans-serif;
+}
+
+.lc-price .cube {
+  width: 12px;
+  height: 12px;
+}
+
+@keyframes deal {
+  from { transform: translateY(40px) rotate(-6deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toast {
+    transition: none;
+  }
+
+  .finger,
+  #actBtn,
+  .lcard {
+    animation: none;
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+.DS_Store
+# своя команда с настоящими именами — только на этом компьютере
+src/crew.local.json
+# ранний прототип и локальные настройки редактора
+korabl-3d.html
+.claude
