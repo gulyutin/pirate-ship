@@ -3,12 +3,13 @@ import { cube } from './voxel.js';
 import { walkPose } from './crew.js';
 
 // Перк «Балбес». Время от времени игра случайно выбирает одного человека из
-// списка "balbesy" в crew.json: «Боцман теперь балбес!». Балбес надевает шапку
+// списка "balbesy" в crew.json: «Пушкарь теперь балбес!». Балбес надевает шапку
 // с пропеллером и чудит. Ничего плохого не случается — только смешно, а иногда
 // и полезно. Через минуту-другую балбесом становится кто-то другой.
 
 const SEA_ACTS = ['sleep', 'dance', 'fish', 'sneeze', 'swim'];
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
+const v = (p, m, f) => (p.fem ? f : m); // уснул / уснула
 
 // hooks: say, fx, sfx, mode(), walking(), gold(n), boost(sec), salute(), cannons()
 export function createBalbes(crew, hooks) {
@@ -34,7 +35,7 @@ export function createBalbes(crew, hooks) {
     if (current) wearHat(current, false);
     current = p;
     wearHat(p, true);
-    hooks.say(`${p.name} теперь балбес! 🤪`, 3);
+    hooks.say(`${p.name} теперь ${v(p, 'балбес', 'балбеска')}! 🤪`, 3);
     hooks.sfx.goof();
     hooks.fx.burst(0xe8b830, worldPos(p, 5), 10, { speed: 6, up: 5, size: 0.5 });
     nextT = 6 + Math.random() * 6; // первая проделка — скоро
@@ -58,18 +59,18 @@ export function createBalbes(crew, hooks) {
     switch (kind) {
       case 'sleep':
         act.dur = 4.5;
-        hooks.say(`${n} уснул на посту 💤`);
+        hooks.say(`${n} ${v(who, 'уснул', 'уснула')} на посту 💤`);
         who.g.rotation.x = 1.3;
         who.g.position.y = who.home.y + 0.4;
         break;
       case 'dance':
         act.dur = 3.5;
-        hooks.say(`${n} пустился в пляс!`);
+        hooks.say(`${n} ${v(who, 'пустился', 'пустилась')} в пляс!`);
         hooks.sfx.dance();
         break;
       case 'fish': {
         act.dur = 2.6;
-        hooks.say(`${n} закинул удочку…`);
+        hooks.say(`${n} ${v(who, 'закинул', 'закинула')} удочку…`);
         const arm = who.g.userData.limbs[3];
         arm.rotation.x = -2.4;
         act.rod = cube(arm, 0x7a5230, 0.15, 0.15, 5, 0, -1.3, -2.4);
@@ -82,11 +83,11 @@ export function createBalbes(crew, hooks) {
       case 'swim':
         act.dur = 3.4;
         act.side = Math.sign(who.home.x) || 1;
-        hooks.say(`${n} прыгнул купаться!`);
+        hooks.say(`${n} ${v(who, 'прыгнул', 'прыгнула')} купаться!`);
         break;
       case 'trip':
         act.dur = 1;
-        hooks.say(`${n} споткнулся — бум!`);
+        hooks.say(`${n} ${v(who, 'споткнулся', 'споткнулась')} — бум!`);
         hooks.sfx.bump();
         break;
     }
@@ -94,27 +95,28 @@ export function createBalbes(crew, hooks) {
 
   function finish(a) {
     const n = a.who.name;
+    const w = a.who;
     restore(a);
     act = null;
     if (a.kind === 'fish') {
       const roll = Math.random();
       const p = worldPos(a.who, 1);
       if (roll < 0.45) {
-        hooks.say(`…и выловил старый сапог! 👢`);
+        hooks.say(`…и ${v(w, 'выловил', 'выловила')} старый сапог! 👢`);
         hooks.fx.burst(0x5a3a20, p, 6);
       } else if (roll < 0.8) {
-        hooks.say(`…и поймал рыбу! 🐟`);
+        hooks.say(`…и ${v(w, 'поймал', 'поймала')} рыбу! 🐟`);
         hooks.fx.burst(0x9fb8c8, p, 8);
       } else {
-        hooks.say(`…и выловил сундук! +5`);
+        hooks.say(`…и ${v(w, 'выловил', 'выловила')} сундук! +5`);
         hooks.fx.burst(0xf6c944, p, 14);
         hooks.sfx.chest();
         hooks.gold(5);
       }
     } else if (a.kind === 'swim') {
-      hooks.say(`${n} вылез мокрый, но довольный`);
+      hooks.say(`${n} ${v(w, 'вылез мокрый, но довольный', 'вылезла мокрая, но довольная')}`);
     } else if (a.kind === 'trip') {
-      hooks.say(`…и нашёл монетку! +1`);
+      hooks.say(`…и ${v(w, 'нашёл', 'нашла')} монетку! +1`);
       hooks.fx.burst(0xf6c944, worldPos(a.who, 0.5), 8);
       hooks.sfx.coin();
       hooks.gold(1);
@@ -147,7 +149,7 @@ export function createBalbes(crew, hooks) {
           g.rotation.x = -0.5;
           if (hooks.cannons()) {
             hooks.salute();
-            hooks.say(`АПЧХИ! ${p.name} чихнул — пушки дали салют!`);
+            hooks.say(`АПЧХИ! ${p.name} ${v(p, 'чихнул', 'чихнула')} — пушки дали салют!`);
           } else {
             hooks.boost(3);
             hooks.say(`АПЧХИ! Паруса надулись — полный вперёд!`);

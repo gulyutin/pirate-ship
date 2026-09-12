@@ -24,6 +24,7 @@ const fresh = () => ({
   look: { sail: 'purple', flag: 'black', figure: 'none', hat: 'tricorn', pet: 'parrot' }, // внешний вид
   owned: ['sail:purple', 'flag:black', 'figure:none', 'hat:tricorn', 'pet:parrot', 'pet:none'],
   base: [], // блоки своего острова: [i, k, низ, тип]
+  story: { keys: 0, kraken: false, legend: false, islands: [] }, // «Легенда о Кракене»
 });
 
 function read(key) {
@@ -50,6 +51,8 @@ export function loadSave() {
   }
   save.up = { ...fresh().up, ...save.up };
   save.look = { ...fresh().look, ...save.look };
+  save.story = { ...fresh().story, ...save.story };
+  if (!Array.isArray(save.story.islands)) save.story.islands = [];
   for (const k of ['found', 'summits', 'quests', 'owned', 'base']) if (!Array.isArray(save[k])) save[k] = fresh()[k];
   return save;
 }

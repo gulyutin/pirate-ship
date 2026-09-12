@@ -16,6 +16,21 @@ function interleave(lists) {
   return out;
 }
 
+// Часть света каждого чуда — по ним разложены ключи в сюжете «Легенда о Кракене».
+const CLASSIC_REGION = {
+  eiffel: 'europe', bigben: 'europe', spasskaya: 'russia', liberty: 'americas', pyramids: 'africa',
+  pisa: 'europe', basil: 'russia', rocket: 'asia', colosseum: 'europe', taj: 'asia',
+  windmill: 'europe', moai: 'americas', christ: 'americas', burj: 'asia', pagoda: 'asia',
+  sydney: 'asia', stonehenge: 'europe', chichen: 'americas', parthenon: 'europe', greatwall: 'asia',
+};
+const tag = (list, region) => list.map((l) => ({ ...l, region }));
+
 // 100 чудес света. Порядок = порядок островов от порта: первые 20 — самые знаменитые
 // (и их номера совпадают с сохранениями прошлой версии).
-export const LANDMARKS = [...CLASSIC, ...interleave([RUSSIA, EUROPE, ASIA, AMERICAS, AFRICA, EUROPE2, ASIA2, ANCIENT])];
+export const LANDMARKS = [
+  ...CLASSIC.map((l) => ({ ...l, region: CLASSIC_REGION[l.id] ?? 'europe' })),
+  ...interleave([
+    tag(RUSSIA, 'russia'), tag(EUROPE, 'europe'), tag(ASIA, 'asia'), tag(AMERICAS, 'americas'),
+    tag(AFRICA, 'africa'), tag(EUROPE2, 'europe'), tag(ASIA2, 'asia'), tag(ANCIENT, 'africa'),
+  ]),
+];

@@ -13,6 +13,9 @@ import { createControls } from './controls.js';
 import { createMinimap, drawWorldMap } from './minimap.js';
 import { createBalbes } from './balbes.js';
 import { createFairy } from './fairy.js';
+import { createGunner } from './gunner.js';
+import { createStory, LEGEND } from './story.js';
+import { BOSSES, kraken } from './bosses.js';
 import { sfx, unlockAudio, setMuted, setMusic, setTrack, setRain } from './audio.js';
 import { createCards, renderPicker } from './cards.js';
 import { createEvents } from './events.js';
@@ -103,6 +106,7 @@ const WONDERS = terrain.islands.filter((isl) => !isl.port);
 /* ---------- сохранение и состояние ---------- */
 ship.setUpgrades(save.up);
 ship.setFlag(save.look.flag);
+ship.setTrophy(!!save.story.kraken);
 setMuted(save.muted);
 
 // port — стоим у причала, открыт магазин (он же главное меню)
@@ -180,8 +184,75 @@ const fairy = createFairy(scene, crew, {
   captain: () => cap,
 });
 
+const gunner = createGunner(scene, crew, {
+  say,
+  fx,
+  sfx,
+  mode: () => mode,
+  ship: ship.group,
+  busy: (p) => balbes.acting(p),
+  findEnemy: () => nearestItem((it) => it.kind === 'enemy' && !it.sinking && !it.hidden, 90),
+  sinkEnemy: (it) => {
+    if (it.custom) {
+      it.onHit(3); // босса фейерверк не топит сразу — просто сильно бьёт
+      return;
+    }
+    const p = it.g.position;
+    world.sink(it);
+    world.addChest(p.x, p.z);
+    sfx.sink();
+    quests.event('sink');
+  },
+  findLoot: () => nearestItem((it) => it.kind === 'chest' || it.kind === 'barrel', 70),
+});
+
+const story = createStory(save, {
+  islands: terrain.islands,
+  scene,
+  fx,
+  sfx,
+  say,
+  celebrate: (x, y, z) => celebrate(x, y, z),
+  store: () => storeSave(save),
+  cellPos: terrain.cellPos,
+  onKey: () => updateHud(),
+  world,
+  battle,
+  groundAt: terrain.groundAt,
+  hurt: () => damage(),
+  chest: (x, z) => world.addChest(x, z),
+  extra: BOSSES,
+  kraken,
+  onKraken: (p) => {
+    // финал: огромный клад, салют и золотой кубок на корме
+    addGold(200);
+    for (let i = 0; i < 4; i++) setTimeout(() => celebrate(p.x + (Math.random() - 0.5) * 20, 4, p.z + (Math.random() - 0.5) * 20), i * 400);
+    sfx.medal();
+    ship.setTrophy(true);
+    say('🏆 Золотой Кракен побеждён! Его клад твой: +200. Ты — легенда морей!', 6);
+  },
+});
+story.ensure();
+
+// Ближайший к кораблю предмет, подходящий под ok, не дальше maxD.
+function nearestItem(ok, maxD) {
+  let best = null;
+  let bestD = maxD;
+  for (const it of world.items) {
+    if (it.dead || !ok(it)) continue;
+    const d = dist(it.g.position.x, it.g.position.z, boat.x, boat.z);
+    if (d < bestD) {
+      bestD = d;
+      best = it;
+    }
+  }
+  return best;
+}
+
 // Куда ведёт волшебный компас: к великому кладу, а если его нет — к ближайшему неоткрытому острову.
 function fairyTarget() {
+  const st = story.target(); // главное — следующий ключ
+  if (st) return st;
   if (save.bigTreasure != null) {
     const isl = terrain.islands[save.bigTreasure];
     return { x: isl.x, z: isl.z };
@@ -263,6 +334,7 @@ function updateHud() {
   $('goldNum').textContent = save.cargo;
   cards.renderHud($('hudCards'));
   $('isleNum').textContent = `${save.found.length}/${WONDERS.length}`;
+  $('keyNum').textContent = `${save.story.keys}/5`;
   const hasMap = save.mapPieces > 0 || save.bigTreasure != null;
   $('mapRow').classList.toggle('hidden', !hasMap);
   $('mapNum').textContent = save.bigTreasure != null ? 'ищи клад ✕' : `${save.mapPieces}/3`;
@@ -298,24 +370,31 @@ function discover(isl) {
   updateHud();
 }
 
-// Карточка с фактом — при открытии острова и из паспорта.
+// Карточка с фактом. При открытии острова — маленькая плашка (название и страна),
+// нажмёшь — раскроется с фактом. Из паспорта — сразу раскрытая.
 let factTimer = 0;
 function showFact(isl, isNew) {
-  const fact = FACTS[isl.landmark?.id] ?? '';
-  $('fcTop').textContent = isNew ? 'Открыто! Новый штамп в паспорте' : 'Паспорт путешественника';
+  $('fcTop').textContent = isNew ? 'Новый штамп!' : 'Паспорт';
   $('fcName').textContent = isl.name;
   $('fcCountry').textContent = isl.country;
-  $('fcText').textContent = fact;
+  $('fcText').textContent = FACTS[isl.landmark?.id] ?? '';
   const card = $('factCard');
+  card.classList.toggle('collapsed', isNew);
   card.classList.remove('hidden');
+  hideFactLater(isNew ? 6 : 12);
+}
+
+function hideFactLater(sec) {
   clearTimeout(factTimer);
-  factTimer = setTimeout(() => card.classList.add('hidden'), 10000);
+  factTimer = setTimeout(() => $('factCard').classList.add('hidden'), sec * 1000);
 }
 
 /* ---------- порт, берег, клады ---------- */
 function enterPort(fromWreck = false) {
   balbes.cancel();
+  story.cancel();
   fairy.cancel();
+  gunner.cancel();
   fishing.stop();
   events.clear();
   cards.reset();
@@ -409,6 +488,30 @@ function pickCard(card) {
   closeCards();
   say(`${card.icon} ${card.name}!`);
   updateHud();
+}
+
+// Полоска испытания вверху экрана.
+let trialText = null;
+function showTrial(text) {
+  if (text === trialText) return;
+  trialText = text;
+  $('trialBar').classList.toggle('hidden', !text);
+  if (text) $('trialBar').textContent = text;
+}
+
+// Легенда: при первом запуске и по кнопке 📜 в порту.
+function openLegend() {
+  unlockAudio();
+  $('legendText').textContent = LEGEND;
+  $('legendKeys').replaceChildren(
+    ...story.keyList().map((k) => {
+      const el = document.createElement('div');
+      el.className = `legend-key ${k.got ? 'got' : ''}`;
+      el.textContent = `${k.got ? '🗝' : '🔒'} ${k.icon} ${k.key}`;
+      return el;
+    }),
+  );
+  $('scLegend').classList.remove('hidden');
 }
 
 // Бутылка с запиской: клочок карты сокровищ или карта удачи в подарок.
@@ -678,6 +781,10 @@ function enemyFires(enemy) {
 const battleHooks = {
   hitTarget(it) {
     if (it.kind !== 'enemy' || it.sinking) return;
+    if (it.custom) {
+      it.onHit(1);
+      return;
+    }
     const p = it.g.position;
     it.hp--;
     fx.burst(0x3d2b1f, p, 10, { y: 2 });
@@ -1251,7 +1358,7 @@ function mapMarks() {
   if (big) marks.push({ x: big.x, z: big.z, glyph: '✕', color: '#c0392b' });
   const qt = quests.target();
   if (qt != null) marks.push({ x: terrain.islands[qt].x, z: terrain.islands[qt].z, glyph: '!', color: '#d4a020' });
-  marks.push(...events.marks());
+  marks.push(...events.marks(), ...story.marks());
   return marks;
 }
 
@@ -1336,7 +1443,9 @@ function renderPort() {
     : balbes.current
       ? `🤪 Сейчас балбес: ${balbes.current.name}`
       : '🤪 В море кто-то станет балбесом…';
-  $('fairyLine').textContent = fairy.has ? `✨ ${fairy.names.join(', ')} — волшебница: в море иногда колдует` : '';
+  $('storyLine').textContent = story.portText();
+  $('fairyLine').textContent = fairy.has ? `✨ ${fairy.names.join(', ')}: в море иногда колдует` : '';
+  $('gunnerLine').textContent = gunner.has ? `💥 ${gunner.names.join(', ')}: сам стреляет фейерверком и тянет сундуки гарпуном` : '';
   $('muteBtn').textContent = save.muted ? '🔇' : '🔊';
   renderQuests($('questList'));
   renderShop($('shop'), save, buy);
@@ -1418,6 +1527,7 @@ function renderPause() {
     boat,
     bigTreasure: save.bigTreasure,
     questTarget: quests.target(),
+    storyTarget: story.target(),
   });
   renderQuests($('pauseQuests'));
   $('passBtn').textContent = `📘 Паспорт: ${save.found.length} из ${WONDERS.length}`;
@@ -1476,6 +1586,12 @@ function setPaused(on) {
 
 $('goBtn').addEventListener('click', leavePort);
 $('cardsSkip').addEventListener('click', closeCards);
+$('legendBtn').addEventListener('click', openLegend);
+$('legendGo').addEventListener('click', () => {
+  $('scLegend').classList.add('hidden');
+  save.story.legend = true;
+  storeSave(save);
+});
 // «Начать заново»: сначала спрашиваем — вдруг нажали случайно
 const askRestart = () => $('scRestart').classList.remove('hidden');
 $('portRestart').addEventListener('click', askRestart);
@@ -1490,7 +1606,15 @@ $('portPassBtn').addEventListener('click', openPassport);
 $('passBtn').addEventListener('click', openPassport);
 $('passClose').addEventListener('click', () => $('scPassport').classList.add('hidden'));
 $('spyBtn').addEventListener('click', () => (mode === 'sea' || mode === 'land') && setSpy(!spy));
-$('factCard').addEventListener('click', () => $('factCard').classList.add('hidden'));
+$('factCard').addEventListener('click', () => {
+  const card = $('factCard');
+  if (card.classList.contains('collapsed')) {
+    card.classList.remove('collapsed'); // первое касание — показать факт
+    hideFactLater(12);
+  } else {
+    card.classList.add('hidden');
+  }
+});
 $('pauseBtn').addEventListener('click', () => setPaused(true));
 $('resumeBtn').addEventListener('click', () => setPaused(false));
 $('pauseMute').addEventListener('click', toggleMute);
@@ -1609,6 +1733,7 @@ function frame(now) {
   crew.update(dt, sailorLanded);
   balbes.update(dt, t);
   fairy.update(dt, t);
+  gunner.update(dt, t);
   updateActors(dt, focusX, focusZ);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
@@ -1616,6 +1741,8 @@ function frame(now) {
   });
   nature.update(dt, t, { x: cap.x, y: cap.y, z: cap.z, active: mode === 'land', groundAt: terrain.groundAt, night: sky.night });
   events.update(dt, t, { x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode });
+  story.update(dt, t, { mode, boat, cap });
+  showTrial(story.hud({ mode }));
   fx.update(dt);
 
   // набрали золота в трюм — новая карта удачи
@@ -1650,6 +1777,7 @@ world.spawnLoot(lootOptions());
 quests.ensure();
 show('port');
 updateHud();
+if (!save.story.legend) openLegend();
 setMusic(true);
 renderer.setAnimationLoop(frame);
 
@@ -1657,7 +1785,7 @@ renderer.setAnimationLoop(frame);
 if (import.meta.env.DEV) {
   window.__korabl = {
     get mode() { return mode; },
-    boat, cap, save, terrain, world, balbes, fairy, sky, camera, cards, events, surfaces,
+    boat, cap, save, terrain, world, balbes, fairy, gunner, sky, story, camera, cards, events, surfaces,
     get picking() { return picking; },
     pick: (i) => pickCard(pickChoices[i]),
     // поставить капитана в точку (проверка паркура)

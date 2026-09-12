@@ -43,7 +43,7 @@ export function createBattle(scene) {
       const tg = b.target;
       if (tg && !tg.dead && !tg.sinking) {
         aim.copy(tg.g.position);
-        aim.y += 1.5;
+        aim.y += tg.aimY ?? 1.5;
         if (b.m.position.distanceTo(aim) < tg.r + 0.8) {
           dropBall(i);
           hooks.hitTarget(tg);

@@ -165,7 +165,17 @@ export function createShip(scene) {
     flag.rotation.y = Math.sin(t * 2.6) * 0.18;
   }
 
-  return { group: g, animate, setUpgrades, setFlag, muzzles: () => muzzles };
+  // золотой кубок на корме — за победу над Кракеном
+  const trophy = new THREE.Group();
+  trophy.position.set(0, 2.3, 6.6);
+  cube(trophy, GOLD, 1.0, 0.25, 1.0, 0, 0, 0);
+  cube(trophy, GOLD, 0.3, 0.6, 0.3, 0, 0.4, 0);
+  cube(trophy, GOLD, 1.2, 0.9, 1.2, 0, 1.1, 0);
+  for (const sx of [-1, 1]) cube(trophy, GOLD, 0.2, 0.6, 0.2, sx * 0.75, 1.2, 0);
+  trophy.visible = false;
+  g.add(trophy);
+
+  return { group: g, animate, setUpgrades, setFlag, setTrophy: (on) => (trophy.visible = on), muzzles: () => muzzles };
 }
 
 // Вражеский бриг: тёмное дерево, чёрный парус с черепом. Нос смотрит на игрока (+z).

@@ -19,6 +19,8 @@
             <div class="hud-gold"><span class="cube"></span><span id="goldNum">0</span><small class="hold">в трюме</small></div>
             <div class="hud-isles">🗼 <span id="isleNum">0/20</span></div>
             <div class="hud-isles hidden" id="mapRow">🗺 <span id="mapNum"></span></div>
+            <div class="hud-isles">🗝 <span id="keyNum">0/5</span></div>
+            <div class="hud-isles trial-row hidden" id="trialBar"></div>
             <div class="hud-cards" id="hudCards"></div>
           </div>
         </div>
@@ -50,14 +52,17 @@
               <p class="sub">первого класса</p>
             </div>
             <div class="head-btns">
+              <button class="icon-btn" id="legendBtn" aria-label="Легенда">📜</button>
               <button class="icon-btn" id="portPassBtn" aria-label="Паспорт">📘</button>
               <button class="icon-btn" id="muteBtn" aria-label="Звук">🔊</button>
             </div>
           </div>
           <div class="bank"><span class="cube big"></span><span id="bank">0</span></div>
           <p class="last" id="portStats"></p>
+          <p class="story-line" id="storyLine"></p>
           <p class="last" id="balbesLine"></p>
           <p class="last" id="fairyLine"></p>
+          <p class="last" id="gunnerLine"></p>
           <div class="quests" id="questList"></div>
           <div class="shop" id="shop"></div>
           <div class="flag-row"><span>🏴 Флаг</span><div class="swatches" id="flagColors"></div></div>
@@ -89,6 +94,15 @@
         </div>
       </div>
 
+      <div class="screen hidden" id="scLegend">
+        <div class="panel legend">
+          <h2>📜 Легенда о Кракене</h2>
+          <p class="lede" id="legendText"></p>
+          <div class="legend-keys" id="legendKeys"></div>
+          <button class="btn primary" id="legendGo">Вперёд, за ключами!</button>
+        </div>
+      </div>
+
       <div class="screen hidden" id="scRestart">
         <div class="panel">
           <h2>Начать заново?</h2>
@@ -114,6 +128,7 @@
         <div class="fc-name" id="fcName"></div>
         <div class="fc-country" id="fcCountry"></div>
         <div class="fc-text" id="fcText"></div>
+        <div class="fc-more">ⓘ нажми — интересный факт</div>
       </div>
 
       <div class="screen hidden" id="scErr">

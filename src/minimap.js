@@ -51,6 +51,14 @@ export function drawWorldMap(canvas, v) {
   mark(v.islands.find((i) => i.port), '⚓', '#4a3120');
   mark(v.islands.find((i) => i.id === v.bigTreasure), '✕', '#c0392b');
   mark(v.islands.find((i) => i.id === v.questTarget), '!', '#d4a020');
+  if (v.storyTarget) {
+    const [mx, my] = to(v.storyTarget.x, v.storyTarget.z);
+    ctx.fillStyle = '#e8b830';
+    ctx.fillRect(mx - 8, my - 8, 16, 16);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('★', mx, my + 1);
+  }
   const [sx, sy] = to(v.boat.x, v.boat.z);
   ctx.save();
   ctx.translate(sx, sy);

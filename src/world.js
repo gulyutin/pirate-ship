@@ -333,7 +333,7 @@ export function createWorld(scene, terrain) {
     let best = null;
     let bestD = CANNON_REACH;
     for (const it of items) {
-      if (it.dead || it.kind !== 'enemy' || it.sinking || (it.incoming || 0) >= it.hp) continue;
+      if (it.dead || it.kind !== 'enemy' || it.sinking || it.hidden || (it.incoming || 0) >= it.hp) continue;
       const d = Math.hypot(it.g.position.x - x, it.g.position.z - z);
       if (d < bestD) {
         bestD = d;
@@ -448,7 +448,7 @@ export function createWorld(scene, terrain) {
           if (it.t > 1.2) kill(it);
           break;
         case 'enemy':
-          updateEnemy(it, dt, t, ctx);
+          if (!it.custom) updateEnemy(it, dt, t, ctx); // боссов двигает их собственный код
           break;
       }
     }
@@ -466,6 +466,8 @@ export function createWorld(scene, terrain) {
     removeEnemies,
     update,
     findTarget,
+    addEnemy,
+    addCustom: (it) => track(it),
     addChest,
     addPrize,
     kill,

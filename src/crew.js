@@ -31,6 +31,8 @@ export const sailorNames = listed.length ? listed.slice(0, MAX_SAILORS) : ['Ма
 const goofPool = new Set((Array.isArray(data.balbesy) ? data.balbesy : []).map(cleanName));
 // Волшебницы — список "volshebnicy": корона, волосы с бантиками и волшебная палочка.
 const fairyPool = new Set((Array.isArray(data.volshebnicy) ? data.volshebnicy : []).map(cleanName));
+// Пушкари — список "pushkari": красная бандана, повязка на глаз, сами стреляют фейерверком.
+const gunnerPool = new Set((Array.isArray(data.pushkari) ? data.pushkari : []).map(cleanName));
 
 // Табличка как в Minecraft: полупрозрачная тёмная плашка и белые буквы без сглаживания.
 function nameplate(text, y) {
@@ -115,7 +117,17 @@ function tiara() {
   return t;
 }
 
-function makeSailor(name, shirt, labelY, canGoof, fairy = false) {
+// Бандана пушкаря: красная, в белый горошек, с узлом на затылке.
+function bandana() {
+  const b = new THREE.Group();
+  cube(b, 0xc0392b, 1.3, 0.4, 1.2, 0, 3.75, 0.02);
+  cube(b, 0xc0392b, 0.35, 0.3, 0.3, 0, 3.55, 0.72);
+  cube(b, 0xc0392b, 0.2, 0.5, 0.12, 0.12, 3.3, 0.78);
+  for (const x of [-0.35, 0.3]) cube(b, 0xffffff, 0.14, 0.14, 0.05, x, 3.85, -0.62);
+  return b;
+}
+
+function makeSailor(name, shirt, labelY, canGoof, fairy = false, gunner = false) {
   const g = new THREE.Group();
   const legL = limb(g, -0.4, 1.2, 1.2, 0.6, 0.8, PANTS);
   const legR = limb(g, 0.4, 1.2, 1.2, 0.6, 0.8, PANTS);
@@ -149,7 +161,12 @@ function makeSailor(name, shirt, labelY, canGoof, fairy = false) {
     wand.visible = false;
     g.userData.wand = wand;
   }
-  const hat = fairy ? tiara() : pirateHat();
+  if (gunner) {
+    cube(g, INK, 0.36, 0.36, 0.08, -0.28, 3.22, -0.64); // повязка на глаз
+    cube(g, INK, 1.24, 0.08, 1.14, 0, 3.4, 0); // ремешок вокруг головы
+    cube(g, 0x4a2e1a, 0.7, 0.14, 0.08, 0, 3.0, -0.6); // усы
+  }
+  const hat = fairy ? tiara() : gunner ? bandana() : pirateHat();
   g.add(hat);
   g.userData.hat = hat;
   if (canGoof) {
@@ -188,11 +205,12 @@ export function createCrew(shipGroup) {
   const sailors = sailorNames.map((name, i) => {
     const canGoof = goofPool.has(name);
     const fairy = fairyPool.has(name);
-    const g = makeSailor(name, SHIRTS[i % SHIRTS.length], 7.4 + i * 0.3, canGoof, fairy);
+    const gunner = gunnerPool.has(name);
+    const g = makeSailor(name, SHIRTS[i % SHIRTS.length], 7.4 + i * 0.3, canGoof, fairy, gunner);
     const home = new THREE.Vector3(i % 2 ? 2.2 : -2.2, DECK_Y, 2.6 - i * 1.25);
     g.position.copy(home);
     shipGroup.add(g);
-    return { name, g, home, alive: true, fall: null, canGoof, fairy };
+    return { name, g, home, alive: true, fall: null, canGoof, fairy, gunner, fem: fairy };
   });
 
   function standUp(s) {

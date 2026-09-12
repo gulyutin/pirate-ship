@@ -695,7 +695,7 @@ h2 {
   left: max(14px, env(safe-area-inset-left));
   top: calc(max(12px, env(safe-area-inset-top)) + 168px);
   z-index: 6;
-  width: min(270px, 48%);
+  width: min(270px, 56%);
   box-sizing: border-box;
   padding: 8px 10px 10px;
   cursor: pointer;
@@ -729,6 +729,27 @@ h2 {
 .fc-text {
   margin-top: 4px;
   font: 600 12.5px/1.35 system-ui, sans-serif;
+}
+
+/* свёрнутая карточка — маленькая плашка: название и страна */
+#factCard.collapsed {
+  width: auto;
+  max-width: min(230px, 56%);
+  padding: 6px 9px;
+}
+
+#factCard.collapsed .fc-text {
+  display: none;
+}
+
+#factCard:not(.collapsed) .fc-more {
+  display: none;
+}
+
+.fc-more {
+  margin-top: 3px;
+  font: 700 10.5px system-ui, sans-serif;
+  color: #7a5a3a;
 }
 
 @keyframes card-in {
@@ -796,6 +817,52 @@ h3 {
 
 #scRestart {
   z-index: 7;
+}
+
+/* ---------- сюжет: легенда, ключи, полоска испытания ---------- */
+#scLegend {
+  z-index: 6;
+}
+
+.legend .lede {
+  text-align: left;
+}
+
+.legend-keys {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.legend-key {
+  padding: 6px 8px;
+  font: 700 14px system-ui, sans-serif;
+  color: #3a2a18;
+  background: #f4ecd8;
+  box-shadow: inset -3px -3px 0 #c9b58a;
+}
+
+.legend-key.got {
+  background: #f6d860;
+}
+
+.story-line {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  font: 800 13px system-ui, sans-serif;
+  color: #3a2a18;
+  text-align: left;
+  background: #f6d860;
+  box-shadow: inset -3px -3px 0 #c9a13f;
+}
+
+.trial-row {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 15px;
+  background: rgba(40, 30, 20, 0.55);
+  border: 2px solid #e8b830;
 }
 
 /* ---------- цвет флага ---------- */
