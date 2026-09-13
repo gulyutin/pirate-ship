@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { cube, glow, glows } from './voxel.js';
 import { SEA_Y } from './terrain.js';
 import { buildAnimal } from './animals.js';
+import { duckMusic } from './audio.js';
 
 // Ожившие чудеса: подойди к чуду — появится кнопка: куранты, лифт на вершину, охота за звёздами,
 // тайный ход, воздушные змеи… В первый раз — награда. Эффекты собраны из частиц, звуков и фигур.
@@ -68,15 +69,11 @@ const TUNES = {
     [[N.Gs4, N.Fs4, N.E4, [N.B3, 2], N.E4, N.Gs4, N.Fs4, [N.B3, 2], N.E4, N.Fs4, N.Gs4, [N.E4, 2], N.Gs4, N.E4, N.Fs4, [N.B3, 3]], 0.5, 'bell'],
     [[N.E3, [0, 2], N.E3, [0, 2], N.E3, [0, 2]], 0.55, 'bell', 1.6],
   ),
-  // Куранты Спасской башни: перезвон колокольчиков, двенадцать ударов главного колокола и гимн
+  // Куранты Спасской башни: двенадцать ударов главного колокола и гимн.
+  // Настоящего четвертного перезвона здесь пока нет — его ноты надо снять с записи.
   kremlin: () => {
     const out = [];
-    let t = 0;
-    for (const f of [N.E5, N.D5, N.C5, N.G4, N.E5, N.D5, N.C5, N.G4, N.F5, N.E5, N.D5, N.A4, N.G5, N.F5, N.E5, N.C5]) {
-      out.push({ t, f, k: 'chime', v: 0.9 });
-      t += 0.2;
-    }
-    t += 0.9;
+    let t = 0.3;
     for (let n = 1; n <= 12; n++) {
       out.push({ t, f: N.C3, k: 'bell', v: 1.7, say: `Бом! ${n}` });
       t += 0.75;
@@ -84,10 +81,16 @@ const TUNES = {
     t += 0.8;
     return out.concat(fromStr('G4:1 C5:2 G4:1.5 A4:.5 B4:2 E4:1 E4:1 A4:2 G4:1.5 F4:.5 G4:2 C4:1 C4:1 D4:2 D4:1 E4:1 F4:2 F4:1 G4:1 A4:2 B4:1 C5:1 D5:3 G4:1 C5:4', 0.36, 'chime', 1, t));
   },
-  // Красноярский Биг-Бен: мелодия курантов «соль-соль-до, до-ре-си-до, до», дважды — без боя
+  // Красноярский Биг-Бен: мелодия курантов «соль-соль-до, до-ре-си-до, до» дважды, потом двенадцать ударов
   krasnoyarsk: () => {
     const phrase = 'G5:1 G5:1 C6:3 C6:1 D6:2 B5:2 C6:2 C5:4';
-    return fromStr(phrase, 0.43, 'chime', 0.9).concat(fromStr(phrase, 0.43, 'chime', 0.9, 0.43 * 16 + 1.2));
+    const out = fromStr(phrase, 0.43, 'chime', 0.9).concat(fromStr(phrase, 0.43, 'chime', 0.9, 0.43 * 16 + 1.2));
+    let t = 0.43 * 32 + 2.4;
+    for (let n = 1; n <= 12; n++) {
+      out.push({ t, f: 277, k: 'bell', v: 1.5, say: `Бом! ${n}` }); // часовой колокол — как на записи, около до-диез
+      t += 1.1;
+    }
+    return out;
   },
   pisa: () => chain([[N.C5, N.B4, N.A4, N.G4, N.F4, N.E4, [N.D4, 2], N.C5, N.B4, N.A4, N.G4, N.F4, N.E4, [N.D4, 3]], 0.3, 'bell', 0.8]),
   orloj: () => chain([[N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0], 0.4, 'bell'], [[[N.G4, 0.5], [N.C5, 0.5], [N.E5, 3]], 0.4]),
@@ -142,7 +145,7 @@ const TUNES = {
 const ACTS = {
   eiffel: { label: '🛗 На вершину', fx: 'lift', say: 'Лифт везёт на самый верх Эйфелевой башни! 🛗' },
   bigben: { label: '🔔 Куранты', fx: 'music', tune: 'westminster', h: 0.62, say: 'Бом! Биг-Бен бьёт часы 🔔' },
-  spasskaya: { label: '🔔 Куранты', fx: 'music', tune: 'kremlin', h: 0.6, say: 'Кремлёвские куранты! Послушай перезвон и сосчитай удары 🔔' },
+  spasskaya: { label: '🔔 Куранты', fx: 'music', tune: 'kremlin', h: 0.6, say: 'Кремлёвские куранты! Сосчитай удары 🔔' },
   liberty: { label: '🎆 Салют', fx: ['fireworks', 'music'], tune: 'fanfare', say: 'Салют над Статуей Свободы! 🎆' },
   pyramids: { label: '🔦 Тайный ход', fx: 'secret', bonus: 10, say: 'Тайный ход открылся… а там мумия машет тебе! 👋' },
   pisa: { label: '⚖️ Опыт Галилея', fx: 'galileo', say: 'Галилей бросает с башни тяжёлый и лёгкий шар. Какой упадёт первым? 🤔' },
@@ -172,7 +175,7 @@ const ACTS = {
   bolshoi: { label: '🩰 Балет', fx: ['music', 'ballerina'], tune: 'swan', h: 0.9, r: 5, say: 'Балерина танцует «Лебединое озеро»! 🦢' },
   kizhi: { label: '🔔 Звон', fx: 'music', tune: 'zvon', h: 0.8, say: 'Звонница Кижей заиграла! 🔔' },
   tsar: { label: '💥 Выстрелить капитаном!', fx: 'launchcap', at: [-4, 3.6, -5], say: 'Бабах! Капитан вылетел из Царь-пушки — парашют раскроется сам! 🪂' },
-  krasbigben: { label: '🔔 Куранты', fx: 'music', tune: 'krasnoyarsk', h: 0.72, say: 'Куранты Красноярского Биг-Бена играют свою мелодию! 🔔' },
+  krasbigben: { label: '🔔 Куранты', fx: 'music', tune: 'krasnoyarsk', h: 0.72, say: 'Куранты Красноярского Биг-Бена: мелодия и двенадцать ударов! 🔔' },
   // Европа
   arc: { label: '🚴 Тур де Франс', fx: 'racers', say: 'Велогонка «Тур де Франс» вокруг Триумфальной арки! 🚴' },
   notredame: { label: '🔔 Колокола', fx: 'music', tune: 'zvon', h: 0.7, say: 'Звонит колокол Эммануэль! 🔔' },
@@ -475,6 +478,7 @@ export function createWonders(scene, terrain, hooks) {
       else sfx[n.k]?.(n.t, n.v ?? 1);
       end = Math.max(end, n.t + (n.k === 'bell' || n.k === 'gong' ? 1.2 : n.d ?? 0.3));
     }
+    duckMusic(end + 0.8); // фоновая музыка не мешает мелодии чуда
     return end;
   }
 

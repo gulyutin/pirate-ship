@@ -178,6 +178,17 @@ export const sfx = {
   },
 };
 
+// Пока у чуда звучит его мелодия, фоновая музыка молчит, потом плавно возвращается.
+let duckUntil = 0;
+export function duckMusic(sec) {
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  duckUntil = Math.max(duckUntil, now + sec);
+  musicBus.gain.cancelScheduledValues(now);
+  musicBus.gain.setTargetAtTime(0.0001, now, 0.15);
+  musicBus.gain.setTargetAtTime(0.1, duckUntil, 0.6);
+}
+
 // Шум дождя: бесконечная петля шума, громкость — сила дождя (0..1).
 let rainGain = null;
 export function setRain(level) {
