@@ -84,6 +84,11 @@ const TUNES = {
     t += 0.8;
     return out.concat(fromStr('G4:1 C5:2 G4:1.5 A4:.5 B4:2 E4:1 E4:1 A4:2 G4:1.5 F4:.5 G4:2 C4:1 C4:1 D4:2 D4:1 E4:1 F4:2 F4:1 G4:1 A4:2 B4:1 C5:1 D5:3 G4:1 C5:4', 0.36, 'chime', 1, t));
   },
+  // Красноярский Биг-Бен: мелодия курантов «соль-соль-до, до-ре-си-до, до», дважды — без боя
+  krasnoyarsk: () => {
+    const phrase = 'G5:1 G5:1 C6:3 C6:1 D6:2 B5:2 C6:2 C5:4';
+    return fromStr(phrase, 0.43, 'chime', 0.9).concat(fromStr(phrase, 0.43, 'chime', 0.9, 0.43 * 16 + 1.2));
+  },
   pisa: () => chain([[N.C5, N.B4, N.A4, N.G4, N.F4, N.E4, [N.D4, 2], N.C5, N.B4, N.A4, N.G4, N.F4, N.E4, [N.D4, 3]], 0.3, 'bell', 0.8]),
   orloj: () => chain([[N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0, N.A4, 0], 0.4, 'bell'], [[[N.G4, 0.5], [N.C5, 0.5], [N.E5, 3]], 0.4]),
   // русский колокольный звон: большой колокол, средние и перезвон маленьких
@@ -167,7 +172,7 @@ const ACTS = {
   bolshoi: { label: '🩰 Балет', fx: ['music', 'ballerina'], tune: 'swan', h: 0.9, r: 5, say: 'Балерина танцует «Лебединое озеро»! 🦢' },
   kizhi: { label: '🔔 Звон', fx: 'music', tune: 'zvon', h: 0.8, say: 'Звонница Кижей заиграла! 🔔' },
   tsar: { label: '💥 Выстрелить капитаном!', fx: 'launchcap', at: [-4, 3.6, -5], say: 'Бабах! Капитан вылетел из Царь-пушки — парашют раскроется сам! 🪂' },
-  krasbigben: { label: '🔔 Куранты', fx: 'music', tune: 'westminster', h: 0.72, say: 'Красноярский Биг-Бен бьёт часы — совсем как лондонский! 🔔' },
+  krasbigben: { label: '🔔 Куранты', fx: 'music', tune: 'krasnoyarsk', h: 0.72, say: 'Куранты Красноярского Биг-Бена играют свою мелодию! 🔔' },
   // Европа
   arc: { label: '🚴 Тур де Франс', fx: 'racers', say: 'Велогонка «Тур де Франс» вокруг Триумфальной арки! 🚴' },
   notredame: { label: '🔔 Колокола', fx: 'music', tune: 'zvon', h: 0.7, say: 'Звонит колокол Эммануэль! 🔔' },
