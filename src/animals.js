@@ -173,6 +173,13 @@ const BUILD = {
   },
 };
 
+// модель зверя отдельно — для парадов у чудес света
+export function buildAnimal(kind) {
+  const g = new THREE.Group();
+  BUILD[kind]?.(g);
+  return g;
+}
+
 const BEACH = new Set(['crab', 'turtle', 'flamingo']);
 const SPEED = { crab: 1.5, turtle: 0.7, penguin: 1.2, elephant: 1.4, giraffe: 1.6 };
 

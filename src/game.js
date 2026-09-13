@@ -419,7 +419,96 @@ renderBuildBar();
 buildBar.addEventListener('pointerdown', (e) => e.stopPropagation());
 
 // Ожившие чудеса: подошёл к чуду — кнопка: куранты, салют, тайный ход…
-const wonders = createWonders(scene, terrain, { fx, sfx, say, camera, gold: (n) => addGold(n), save, store: () => storeSave(save) });
+const wonders = createWonders(scene, terrain, {
+  fx,
+  sfx,
+  say,
+  camera,
+  gold: (n) => addGold(n),
+  save,
+  store: () => storeSave(save),
+  focus: (p, r, sec, pitch) => focusOn(p, r, sec, pitch),
+  lift: (isl) => startLift(isl),
+  fling: (p, vx, vz, vy) => flingCap(p, vx, vz, vy),
+});
+
+// Смотровая камера для чудес: отъезжает, чтобы было видно и капитана, и то, что происходит над чудом.
+let showcase = null;
+// pitch — насколько камера выше точки: 0.3 — сбоку, 0.8 — почти сверху (видно всю площадь)
+function focusOn(p, r, sec, pitch = 0.3) {
+  if (mode !== 'land') return;
+  showcase = { x: p.x, y: p.y, z: p.z, r, pitch, t: sec, w: showcase?.w ?? 0 };
+}
+
+// Лифт на макушку чуда: стеклянная кабина везёт капитана вверх, наверху — прозрачная площадка.
+let lift = null;
+let liftPad = null;
+let fling = null;
+const glassMat = new THREE.MeshLambertMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.35, depthWrite: false });
+const capsule = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4, 2.2), glassMat);
+capsule.visible = false;
+scene.add(capsule);
+
+function clearPad() {
+  if (!liftPad) return;
+  scene.remove(liftPad.mesh);
+  surfaces.removeTag('lift');
+  liftPad = null;
+}
+
+function startLift(isl) {
+  if (mode !== 'land' || lift) return;
+  clearPad();
+  const to = { x: isl.x, y: isl.top + 0.3, z: isl.z };
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.3, 6), glassMat);
+  mesh.position.set(to.x, to.y - 0.15, to.z);
+  scene.add(mesh);
+  for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) surfaces.add(to.x + i * B, to.z + k * B, to.y - 0.3, to.y, 'lift');
+  liftPad = { mesh, y: to.y };
+  lift = { from: { x: cap.x, y: cap.y, z: cap.z }, to, t: 0, dur: 2 + (to.y - cap.y) / 12 };
+  Object.assign(cap, { air: false, vy: 0 });
+  fling = null;
+  sfx.whoosh();
+}
+
+function updateLift(dt) {
+  setAction(null);
+  lift.t += dt;
+  const k = Math.min(1, lift.t / lift.dur);
+  const up = smooth(Math.min(1, k / 0.7));
+  const side = smooth(Math.max(0, (k - 0.7) / 0.3));
+  cap.x = lift.from.x + (lift.to.x - lift.from.x) * side;
+  cap.z = lift.from.z + (lift.to.z - lift.from.z) * side;
+  cap.y = lift.from.y + (lift.to.y - lift.from.y) * up;
+  capsule.visible = k < 1;
+  capsule.position.set(cap.x, cap.y + 2, cap.z);
+  walkPose(crew.captain, 0, 0);
+  crew.captain.position.set(cap.x, cap.y, cap.z);
+  if (k >= 1) {
+    lift = null;
+    say('Вот это вид! Шагни с края — раскроется парашют 🪂', 4);
+  }
+}
+
+// Капитана подбрасывает (выстрел из Царь-пушки): летит вверх и чуть вбок, вниз — на парашюте.
+function flingCap(p, vx, vz, vy) {
+  if (mode !== 'land' || lift) return;
+  Object.assign(cap, { x: p.x, y: p.y, z: p.z, air: true, vy });
+  fling = { vx, vz, t: 1.4 };
+}
+
+// Парашют над головой капитана: раскрывается сам, когда падаешь с высоты.
+const chute = new THREE.Group();
+const chuteBox = (c, w, h, d, x, y, z) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c }));
+  m.position.set(x, y, z);
+  chute.add(m);
+  return m;
+};
+[0xe0302a, 0xf4f4f4, 0xe0302a, 0xf4f4f4, 0xe0302a].forEach((c, i) => chuteBox(c, 0.9, 0.3, 2.6, (i - 2) * 0.85, 7.2 - Math.abs(i - 2) * 0.35, 0));
+for (const sx of [-1, 1]) chuteBox(0xdddddd, 0.05, 3.2, 0.05, sx * 0.9, 5.3, 0).rotation.z = -sx * 0.25;
+chute.visible = false;
+crew.captain.add(chute);
 
 // Новая наклейка в альбом: звери на островах, дельфины и кит, чудища из легенды.
 function addSticker(id) {
@@ -925,6 +1014,11 @@ function goAboard() {
   }
   balbes.cancel();
   digT = 0;
+  lift = null;
+  fling = null;
+  capsule.visible = false;
+  chute.visible = false;
+  clearPad();
   mode = 'sea';
   crew.captain.removeFromParent();
   ship.group.add(crew.captain);
@@ -1378,8 +1472,19 @@ function doJump() {
 }
 
 function updateLand(dt, mv) {
+  if (lift) {
+    updateLift(dt);
+    return;
+  }
   const m = Math.hypot(mv.x, mv.y);
   const moving = m > 0 && digT <= 0 && !balbes.captainBusy();
+  if (moving && showcase) showcase.t = Math.min(showcase.t, 0); // пошёл — камера возвращается за спину
+  if (fling) {
+    fling.t -= dt;
+    cap.x += fling.vx * dt;
+    cap.z += fling.vz * dt;
+    if (fling.t <= 0 || !cap.air) fling = null;
+  }
   if (moving) {
     const [dx, dz] = stickToWorld(mv);
     cap.facing = turnToward(cap.facing, Math.atan2(-dx, -dz), dt * 12);
@@ -1406,6 +1511,9 @@ function updateLand(dt, mv) {
   if (ground === -Infinity) ground = terrain.groundAt(cap.x, cap.z) ?? cap.y;
   if (cap.air) {
     cap.vy -= GRAVITY * dt;
+    // высоко над землёй раскрывается парашют — спуск плавный
+    if (!chute.visible && cap.vy < -7 && cap.y - ground > 3.5) chute.visible = true;
+    if (chute.visible) cap.vy = Math.max(cap.vy, -6);
     cap.y += cap.vy * dt;
     if (cap.y <= ground) {
       cap.y = ground;
@@ -1420,6 +1528,8 @@ function updateLand(dt, mv) {
   } else {
     cap.y = ground;
   }
+  if (!cap.air) chute.visible = false;
+  if (liftPad && !cap.air && cap.y < liftPad.y - 4) clearPad();
 
   // копаем
   let hop = 0;
@@ -1609,6 +1719,21 @@ function updateCamera(dt) {
   const fwdZ = -Math.cos(camYaw);
   wantPos.set(fx0 - fwdX * back, fy0 + height, fz0 - fwdZ * back);
   wantLook.set(fx0 + fwdX * ahead, fy0 + lookY, fz0 + fwdZ * ahead);
+  // смотровая камера: плавно отъезжает от капитана так, чтобы в кадр попало и чудо, и эффект над ним
+  if (showcase) {
+    showcase.t -= dt;
+    showcase.w = clamp(showcase.w + (showcase.t > 0 && mode === 'land' ? dt : -dt) * 1.2, 0, 1);
+    if (showcase.w <= 0 && showcase.t <= 0) showcase = null;
+    else {
+      const dx = cap.x - showcase.x;
+      const dz = cap.z - showcase.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const R = Math.max(showcase.r, d + 10);
+      const w = smooth(showcase.w);
+      wantPos.lerp(look.set(showcase.x + (dx / d) * R, showcase.y + R * showcase.pitch, showcase.z + (dz / d) * R), w);
+      wantLook.lerp(look.set(showcase.x, showcase.y, showcase.z), w);
+    }
+  }
   const k = snapCam ? 1 : Math.min(1, dt * 6);
   snapCam = false;
   camPos.lerp(wantPos, k);
@@ -2108,7 +2233,7 @@ function frame(now) {
   pet.update(dt, t);
   animals.update(dt, t, { mode, cap, fx: focusX, fz: focusZ });
   updateActors(dt, focusX, focusZ);
-  wonders.update(dt);
+  wonders.update(dt, mode === 'land' ? cap : null);
   ocean.update(dt, t, {
     x: boat.x, z: boat.z, heading: boat.heading, speed: boat.speed, mode,
     fx: focusX, fz: focusZ, groundAt: terrain.groundAt,

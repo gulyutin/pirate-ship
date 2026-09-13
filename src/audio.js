@@ -142,6 +142,15 @@ export const sfx = {
     tone(f * 5.4, 0.5, { type: 'sine', vol: vol * 0.15, delay });
   },
   note: (f, dur, delay = 0, vol = 0.16) => tone(f, dur, { type: 'triangle', vol, delay }),
+  // колокольчик курантов: звонкий, но короче большого колокола — мелодия не сливается
+  chime(f, delay = 0, vol = 0.18) {
+    tone(f, 1.1, { type: 'sine', vol, delay });
+    tone(f * 2, 0.7, { type: 'sine', vol: vol * 0.3, delay });
+    tone(f * 2.76, 0.4, { type: 'sine', vol: vol * 0.2, delay });
+  },
+  screech: (delay = 0) => tone(1900, 0.5, { type: 'sawtooth', vol: 0.06, to: 900, delay }),
+  bikebell: (delay = 0) => { tone(2200, 0.25, { type: 'sine', vol: 0.12, delay }); tone(2200, 0.25, { type: 'sine', vol: 0.12, delay: delay + 0.15 }); },
+  thud: (delay = 0) => { tone(80, 0.3, { type: 'sine', vol: 0.45, to: 40, delay }); noise(0.2, { vol: 0.2, freq: 600, to: 150, delay }); },
   gong(delay = 0) {
     tone(98, 3.5, { type: 'sine', vol: 0.35, delay });
     tone(147, 2.5, { type: 'sine', vol: 0.12, delay });

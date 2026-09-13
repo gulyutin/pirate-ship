@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { voxelize, TEX, glow } from './voxel.js';
 import { LANDMARKS } from './landmarks/index.js';
 import { SECRETS } from './landmarks/secret.js';
+import { EXTRA } from './landmarks/extra.js';
 
 // Суша: острова из блоков с чудесами света, причал и постройки порта.
 // Зерно фиксированное — мир одинаковый при каждом запуске, как карта в Minecraft.
@@ -417,6 +418,26 @@ export function createTerrain(scene, surfaces, seed = SEED) {
 
   // свой остров строим последним: номера островов с чудесами не сдвигаются
   makeIsland(HOME.x, HOME.z, HOME.r, { home: true, name: 'Мой остров' });
+
+  // чудеса, добавленные позже, — после своего острова (номера прежних островов не сдвигаются),
+  // на среднем круге, там, где просторнее всего
+  for (const landmark of EXTRA) {
+    const r = landmark.size + 10;
+    let best = null;
+    let bestGap = -Infinity;
+    for (let k = 0; k < 72; k++) {
+      const ang = (k / 72) * Math.PI * 2 + 0.3;
+      const x = Math.cos(ang) * 470;
+      const z = Math.sin(ang) * 470;
+      const gap = Math.min(...placed.map((p) => Math.hypot(p.x - x, p.z - z) - p.r - r));
+      if (gap > bestGap) {
+        bestGap = gap;
+        best = { x, z };
+      }
+    }
+    placed.push({ x: best.x, z: best.z, r });
+    makeIsland(best.x, best.z, r, { landmark });
+  }
 
   // монеты и крестики — только там, где можно стоять
   for (const isl of islands) isl.cells = isl.cells.filter((c) => !solid.has(key(c.i, c.k)));

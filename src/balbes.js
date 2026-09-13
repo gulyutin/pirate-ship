@@ -35,7 +35,7 @@ export function createBalbes(crew, hooks) {
     if (current) wearHat(current, false);
     current = p;
     wearHat(p, true);
-    hooks.say(`${p.name} теперь ${v(p, 'балбес', 'балбеска')}! 🤪`, 3);
+    hooks.say(`${p.name} теперь ${v(p, 'балбес', 'балбесина')}! 🤪`, 3);
     hooks.sfx.goof();
     hooks.fx.burst(0xe8b830, worldPos(p, 5), 10, { speed: 6, up: 5, size: 0.5 });
     nextT = 6 + Math.random() * 6; // первая проделка — скоро

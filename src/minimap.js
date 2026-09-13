@@ -5,6 +5,30 @@ const S = 120; // размер в CSS-пикселях
 const RANGE = 250; // мировых единиц от центра до края
 const K = S / 2 / RANGE;
 
+// Подписи открытых островов: белым с тёмной обводкой; если подпись налезает на уже
+// поставленную — её пропускаем (первыми ставятся порт, свой остров и последние открытия).
+function drawLabels(ctx, items, px) {
+  const placed = [];
+  ctx.save();
+  ctx.font = `bold ${px}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  for (const it of items) {
+    const t = it.text.length > 14 ? `${it.text.slice(0, 13)}…` : it.text;
+    const w = ctx.measureText(t).width;
+    const b = [it.x - w / 2 - 1, it.y - 1, w + 2, px + 2];
+    if (placed.some((q) => q[0] < b[0] + b[2] && b[0] < q[0] + q[2] && q[1] < b[1] + b[3] && b[1] < q[1] + q[3])) continue;
+    placed.push(b);
+    ctx.strokeStyle = 'rgba(20,40,60,0.85)';
+    ctx.strokeText(t, it.x, it.y);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(t, it.x, it.y);
+  }
+  ctx.restore();
+}
+
 // Большая карта всего моря — для паузы. Север (−z) сверху.
 // v: { islands, found, summits, boat: { x, z, heading }, bigTreasure, questTarget }
 export function drawWorldMap(canvas, v) {
@@ -22,10 +46,12 @@ export function drawWorldMap(canvas, v) {
   ctx.fillRect(0, 0, size, size);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  const names = [];
   for (const isl of v.islands) {
     const [mx, my] = to(isl.x, isl.z);
     if (isl.port || isl.home || v.found.includes(isl.id)) {
       const rr = Math.max(2.5, isl.r * k);
+      names.push({ text: isl.name, x: mx, y: my + rr + 1, rank: isl.port || isl.home ? 1e9 : v.found.indexOf(isl.id) });
       ctx.fillStyle = '#e3d38f';
       ctx.fillRect(mx - rr, my - rr, rr * 2, rr * 2);
       ctx.fillStyle = isl.port ? '#b58a58' : isl.home ? '#e8793a' : '#5fa044';
@@ -39,6 +65,7 @@ export function drawWorldMap(canvas, v) {
       ctx.fillRect(mx - 1.5, my - 1.5, 3, 3);
     }
   }
+  drawLabels(ctx, names.sort((a, b) => b.rank - a.rank), 9);
   const mark = (isl, glyph, color) => {
     if (!isl) return;
     const [mx, my] = to(isl.x, isl.z);
@@ -124,6 +151,7 @@ export function createMinimap(canvas) {
     let port = null;
     let mystery = null;
     let mysteryD = Infinity;
+    const names = [];
     for (const isl of v.islands) {
       if (isl.port) port = isl;
       const known = isl.port || isl.home || v.found.includes(isl.id);
@@ -141,7 +169,9 @@ export function createMinimap(canvas) {
       ctx.fillRect(mx - rr, my - rr, rr * 2, rr * 2);
       ctx.fillStyle = isl.port ? '#b58a58' : isl.home ? '#e8793a' : '#5fa044';
       ctx.fillRect(mx - rr * 0.7, my - rr * 0.7, rr * 1.4, rr * 1.4);
+      names.push({ text: isl.name, x: mx, y: my + rr + 1 });
     }
+    drawLabels(ctx, names, 8);
 
     ctx.fillStyle = '#e0302a';
     for (const e of v.enemies) {
